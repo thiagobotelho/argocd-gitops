@@ -83,4 +83,28 @@ oc get route -n openshift-gitops openshift-gitops-server
 ```
 
 Acesse o Argo CD via Route.
+
 Autenticação padrão: integra-se ao OAuth do OpenShift (usuários com cluster-admin entram como admin).
+
+## 🔄 Fluxo de Deploy com Waves
+
+Ordem de aplicação dos manifests (via annotations argocd.argoproj.io/sync-wave):
+
+Wave 0 → Namespace, OperatorGroup, Subscription.
+Wave 1 → ArgoCD CR (instância do Argo CD).
+
+## ✅ Boas práticas corporativas
+
+Namespace dedicado: openshift-gitops.
+Subscription Approval:
+Automatic em dev/uat.
+Manual em prd (alinhado ao processo de Change Management).
+IgnoreDifferences: evitar drift em Subscription/CSV gerados pelo OLM.
+RBAC: utilizar AppProjects no Argo CD para isolar times/aplicações.
+Segurança: expor Argo CD apenas via Route TLS, nunca via NodePort.
+
+# 📚 Referências
+
+OpenShift GitOps Documentation
+Argo CD Official
+Kustomize Docs
