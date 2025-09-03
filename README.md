@@ -1,7 +1,7 @@
 # argocd-gitops
 
 Repositório GitOps para instalação e configuração do **Argo CD** em ambientes **OpenShift/Kubernetes** utilizando o **OpenShift GitOps Operator**.  
-Este repositório implementa práticas de **Infrastructure as Code (IaC)**, garantindo versionamento, rastreabilidade e consistência em múltiplos ambientes (dev, uat, prd).
+Este repositório implementa práticas de **Infrastructure as Code (IaC)**, garantindo versionamento, rastreabilidade.
 
 ---
 
@@ -43,14 +43,7 @@ argocd-gitops/
 │   ├── kustomization.yaml
 │   ├── namespace.yaml       # Criação do namespace openshift-gitops
 │   ├── operatorgroup.yaml   # OperatorGroup do Argo CD
-│   └── subscription.yaml    # Subscription do OpenShift GitOps Operator
-└── overlays/                # Overlays por ambiente
-    ├── dev/
-    │   └── kustomization.yaml
-    ├── uat/
-    │   └── kustomization.yaml
-    └── prd/
-        └── kustomization.yaml
+└── └── subscription.yaml    # Subscription do OpenShift GitOps Operator
 ```
 
 ---
@@ -67,9 +60,7 @@ cd argocd-gitops
 Se o Argo CD ainda não estiver provisionado, aplique os manifests com `oc`/`kubectl`:
 
 ```bash
-oc apply -k overlays/dev
-oc apply -k overlays/uat
-oc apply -k overlays/prd
+oc apply -k base
 ```
 
 ### 3. Validar instalação
@@ -96,9 +87,7 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 ## ✅ Boas práticas corporativas
 
 - **Namespace dedicado**: `openshift-gitops`.  
-- **Subscription Approval**:  
-  - `Automatic` em **dev/uat**.  
-  - `Manual` em **prd** (alinhado a Change Management).  
+- **Subscription Approval**: `Automatic`.  
 - **IgnoreDifferences**: evitar drift em `Subscription` e `CSV` gerados pelo OLM.  
 - **RBAC**: utilizar `AppProjects` no Argo CD para isolar times e aplicações.  
 - **Segurança**: expor o Argo CD apenas via Route TLS (não usar NodePort).  
