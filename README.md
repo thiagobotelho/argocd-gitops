@@ -7,10 +7,10 @@ Este repositório implementa práticas de **Infrastructure as Code (IaC)**, gara
 
 ## 📌 Objetivo
 
-- Instalar o **OpenShift GitOps (Argo CD Operator)** via OLM (Operator Lifecycle Manager).  
+- Provisionar o **OpenShift GitOps (Argo CD Operator)** via OLM (Operator Lifecycle Manager).  
 - Criar e gerenciar instâncias do **Argo CD** (`ArgoCD CR`).  
 - Padronizar o fluxo de deploy entre ambientes.  
-- Preparar a base para que workloads (ex.: Keycloak, Postgres) sejam gerenciados posteriormente pelo Argo CD.  
+- Estabelecer a base para workloads futuros (ex.: Keycloak, Postgres).  
 
 ---
 
@@ -22,7 +22,7 @@ flowchart TD
     B --> C[CSV - ClusterServiceVersion]
     C --> D[ArgoCD CR Instance]
     D --> E[Applications & AppProjects]
-    
+
     subgraph cluster [Cluster OpenShift/Kubernetes]
         A
         B
@@ -36,7 +36,7 @@ flowchart TD
 
 ## 📂 Estrutura do Repositório
 
-```
+```bash
 argocd-gitops/
 ├── README.md                # Documentação principal
 ├── base/                    # Manifests genéricos do Argo CD
@@ -57,54 +57,69 @@ argocd-gitops/
 
 ## 🚀 Como utilizar
 
-1. Clonar o repositório
-
-```
+### 1. Clonar o repositório
+```bash
 git clone git@github.com:thiagobotelho/argocd-gitops.git
 cd argocd-gitops
 ```
 
-2. Aplicar no cluster
+### 2. Aplicar no cluster
+Se o Argo CD ainda não estiver provisionado, aplique os manifests com `oc`/`kubectl`:
 
-Sem Argo CD ainda, use kubectl/oc diretamente:
-
-```
+```bash
 oc apply -k overlays/dev
 oc apply -k overlays/uat
 oc apply -k overlays/prd
 ```
 
-3. Validar instalação
-
-```
+### 3. Validar instalação
+```bash
 oc get csv -n openshift-gitops
 oc get pods -n openshift-gitops
 oc get route -n openshift-gitops openshift-gitops-server
 ```
 
-Acesse o Argo CD via Route.
+- **Acesso à UI**: via Route exposta.  
+- **Autenticação**: integrada ao OAuth do OpenShift. Usuários com `cluster-admin` têm acesso administrativo inicial.  
 
-Autenticação padrão: integra-se ao OAuth do OpenShift (usuários com cluster-admin entram como admin).
+---
 
-## 🔄 Fluxo de Deploy com Waves
+## 🔄 Fluxo de Deploy (Sync Waves)
 
-Ordem de aplicação dos manifests (via annotations argocd.argoproj.io/sync-wave):
+A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io/sync-wave`:
 
-Wave 0 → Namespace, OperatorGroup, Subscription.
-Wave 1 → ArgoCD CR (instância do Argo CD).
+- **Wave 0** → `Namespace`, `OperatorGroup`, `Subscription`.  
+- **Wave 1** → `ArgoCD CR` (instância do Argo CD).  
+
+---
 
 ## ✅ Boas práticas corporativas
 
-Namespace dedicado: openshift-gitops.
-Subscription Approval:
-Automatic em dev/uat.
-Manual em prd (alinhado ao processo de Change Management).
-IgnoreDifferences: evitar drift em Subscription/CSV gerados pelo OLM.
-RBAC: utilizar AppProjects no Argo CD para isolar times/aplicações.
-Segurança: expor Argo CD apenas via Route TLS, nunca via NodePort.
+- **Namespace dedicado**: `openshift-gitops`.  
+- **Subscription Approval**:  
+  - `Automatic` em **dev/uat**.  
+  - `Manual` em **prd** (alinhado a Change Management).  
+- **IgnoreDifferences**: evitar drift em `Subscription` e `CSV` gerados pelo OLM.  
+- **RBAC**: utilizar `AppProjects` no Argo CD para isolar times e aplicações.  
+- **Segurança**: expor o Argo CD apenas via Route TLS (não usar NodePort).  
 
-# 📚 Referências
+---
 
-OpenShift GitOps Documentation
-Argo CD Official
-Kustomize Docs
+## 🔮 Próximos passos
+
+- [ ] Criar um `ArgoCD CR` customizado (HA, RBAC, Redis, Sharding).  
+- [ ] Implementar **App of Apps** para bootstrap de workloads.  
+- [ ] Integrar com **SealedSecrets** ou **External Secrets Operator** para gestão segura de segredos.  
+- [ ] Configurar monitoramento do Argo CD com **Prometheus/Grafana**.  
+
+---
+
+## 📚 Referências
+
+- [OpenShift GitOps Documentation](https://docs.openshift.com/container-platform/latest/cicd/gitops/understanding-openshift-gitops.html)  
+- [Argo CD Official](https://argo-cd.readthedocs.io/en/stable/)  
+- [Kustomize Docs](https://kubectl.docs.kubernetes.io/guides/introduction/kustomize/)  
+
+---
+
+👨‍💻 **Maintainer:** [Thiago Botelho](https://github.com/thiagobotelho)
