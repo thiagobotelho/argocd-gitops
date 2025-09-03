@@ -119,6 +119,8 @@ spec:
     policy: |
       g, system:cluster-admins, role:admin
       g, cluster-admins, role:admin
+      u, kubeadmin, role:admin
+      u, kube:admin, role:admin",
     scopes: "[groups]"
 
   # Exclusões de recursos (evitar ruído de Tekton)
