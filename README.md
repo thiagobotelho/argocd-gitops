@@ -38,12 +38,14 @@ flowchart TD
 
 ```bash
 argocd-gitops/
-├── README.md                # Documentação principal
-├── base/                    # Manifests genéricos do Argo CD
-│   ├── kustomization.yaml
-│   ├── namespace.yaml       # Criação do namespace openshift-gitops
-│   ├── operatorgroup.yaml   # OperatorGroup do Argo CD
-└── └── subscription.yaml    # Subscription do OpenShift GitOps Operator
+├── README.md                  # Documentação principal
+├── base/                      # Manifests genéricos
+│   ├── kustomization.yaml     # Orquestra recursos com waves
+│   ├── namespace.yaml         # Namespace openshift-gitops
+│   ├── operatorgroup.yaml     # OperatorGroup
+│   ├── subscription.yaml      # Subscription do Operator
+└── └── argocd.yaml            # Instância ArgoCD (CR)
+
 ```
 
 ---
