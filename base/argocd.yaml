@@ -12,8 +12,6 @@ spec:
       enabled: true
     autoscale:
       enabled: false        
-      minReplicas: 2
-      maxReplicas: 5
     resources:
       requests:
         cpu: 250m
