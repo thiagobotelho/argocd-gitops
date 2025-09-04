@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/argocd-gitops.git
     targetRevision: main
-    path: overlays/apps
+    path: base/apps
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-gitops
