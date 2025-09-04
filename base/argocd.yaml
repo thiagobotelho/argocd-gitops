@@ -72,8 +72,6 @@ spec:
         memory: 1Gi
     autoscale:
       enabled: false  
-      minReplicas: 2
-      maxReplicas: 5
 
   # Redis interno
   redis:
