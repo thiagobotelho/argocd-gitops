@@ -1,123 +1,97 @@
 apiVersion: argoproj.io/v1beta1
 kind: ArgoCD
 metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: '1'
   name: openshift-gitops
   namespace: openshift-gitops
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - argoproj.io/finalizer
+  labels:
+    argocd.argoproj.io/instance: argocd-cluster
 spec:
-  # Exposição via Route do OpenShift
   server:
-    route:
-      enabled: true
     autoscale:
-      enabled: false        
-    resources:
-      requests:
-        cpu: 250m
-        memory: 256Mi
-      limits:
-        cpu: 1
-        memory: 512Mi
+      enabled: false
     grpc:
       ingress:
         enabled: false
     ingress:
       enabled: false
-    service:
-      type: ""
-
-  #Monitoramento Metrics
-  monitoring: 
-    enabled: true 
-  notifications: 
-    enabled: true
-
-  # Grafana
-  grafana: 
-    enabled: false 
-    ingress: 
-      enabled: false 
-    resources: 
-      limits: 
-        cpu: 500m 
-        memory: 256Mi 
-      requests: 
-        cpu: 250m 
-        memory: 128Mi                 
-
-  # Controller (reconciliação)
-  controller:
-    processors: {}
-    sharding:
-      enabled: false
     resources:
-      requests:
-        cpu: 250m
-        memory: 1Gi
       limits:
-        cpu: "2"
-        memory: 2Gi
-
-  # Repositório (repo-server)
-  repo:
-    resources:
-      requests:
-        cpu: 250m
+        cpu: 1
         memory: 512Mi
-      limits:
-        cpu: "1"
-        memory: 1Gi
-    autoscale:
-      enabled: false  
-
-  # Redis interno
-  redis:
-    resources:
       requests:
         cpu: 250m
         memory: 256Mi
+    route:
+      enabled: true
+    service:
+      type: ''
+  grafana:
+    enabled: false
+    ingress:
+      enabled: false
+    resources:
       limits:
         cpu: 500m
-        memory: 512Mi
-
-  # ApplicationSet (App of Apps, etc.)
+        memory: 256Mi
+      requests:
+        cpu: 250m
+        memory: 128Mi
+    route:
+      enabled: false
+  monitoring:
+    enabled: true
+  notifications:
+    enabled: true
+  prometheus:
+    enabled: false
+    ingress:
+      enabled: false
+    route:
+      enabled: false
+  initialSSHKnownHosts: {}
+  sso:
+    dex:
+      openShiftOAuth: true
+      resources:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 250m
+          memory: 128Mi
+    provider: dex
+  applicationInstanceLabelKey: argocd.argoproj.io/instance
   applicationSet:
     resources:
+      limits:
+        cpu: '2'
+        memory: 1Gi
       requests:
         cpu: 250m
         memory: 512Mi
-      limits:
-        cpu: "2"
-        memory: 1Gi
     webhookServer:
       ingress:
         enabled: false
       route:
         enabled: false
-
-  # SSO com OAuth do OpenShift (via Dex)
-  sso:
-    provider: dex
-    dex:
-      openShiftOAuth: true
-      resources:
-        requests:
-          cpu: 250m
-          memory: 128Mi
-        limits:
-          cpu: 500m
-          memory: 256Mi
-
-  # RBAC corporativo
   rbac:
-    defaultPolicy: role:readonly
+    defaultPolicy: 'role:readonly'
     policy: |
       g, system:cluster-admins, role:admin
       g, cluster-admins, role:admin
-    scopes: "[groups]"
-
-  # Exclusões de recursos (evitar ruído de Tekton)
+    scopes: '[groups]'
+  repo:
+    resources:
+      limits:
+        cpu: '1'
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
   resourceExclusions: |
     - apiGroups:
       - tekton.dev
@@ -126,39 +100,33 @@ spec:
       kinds:
       - TaskRun
       - PipelineRun
-
-  # HA – opcional (PRD)
   ha:
     enabled: false
     resources:
-      requests:
-        cpu: 250m
-        memory: 128Mi
       limits:
         cpu: 500m
         memory: 256Mi
-
-  # TLS (CA corporativa – opcional)
+      requests:
+        cpu: 250m
+        memory: 128Mi
   tls:
     ca: {}
-
-  # Chave de instância para Applications
-  applicationInstanceLabelKey: argocd.argoproj.io/instance
-
-  # (Opcional) Health-check custom de CRDs
-  # resourceCustomizations: |
-  #   k8s.keycloak.org/Keycloak:
-  #     health.lua: |
-  #       hs = { status = "Progressing", message = "Reconciling" }
-  #       if obj.status ~= nil then
-  #         for _, c in ipairs(obj.status.conditions or {}) do
-  #           if c.type == "Ready" and c.status == "True" then
-  #             hs.status = "Healthy"
-  #             hs.message = c.message or "Ready"
-  #           end
-  #         end
-  #       end
-  #       return hs
-
-  # (Opcional) Habilitar Helm via Kustomize
-  # kustomizeBuildOptions: "--enable-helm"
+  redis:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  controller:
+    processors: {}
+    resources:
+      limits:
+        cpu: '2'
+        memory: 2Gi
+      requests:
+        cpu: 250m
+        memory: 1Gi
+    sharding:
+      enabled: false
