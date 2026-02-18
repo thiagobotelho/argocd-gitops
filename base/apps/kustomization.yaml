@@ -5,3 +5,4 @@ resources:
   - app-metallb-cluster.yaml
   - app-keycloak-dev.yaml
   - app-argocd-cluster.yaml
+  - app-tempo-cluster.yaml
