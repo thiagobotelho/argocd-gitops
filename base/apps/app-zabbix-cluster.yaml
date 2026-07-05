@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zabbix
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thiagobotelho/zabbix-gitops.git
+    targetRevision: main
+    path: overlays/crc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zabbix
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, PruneLast=true]

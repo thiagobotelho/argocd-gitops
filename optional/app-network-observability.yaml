@@ -1,0 +1,17 @@
+# Opt-in: não faz parte do App-of-Apps padrão por consumir recursos adicionais.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: network-observability
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thiagobotelho/network-observability-gitops.git
+    targetRevision: main
+    path: overlays/crc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-netobserv-operator
+  syncPolicy:
+    syncOptions: [CreateNamespace=true, PruneLast=true]

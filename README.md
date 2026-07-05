@@ -52,6 +52,10 @@ argocd-gitops/
 
 ## 🚀 Como utilizar
 
+O App-of-Apps em `overlays/apps` gerencia Keycloak, MetalLB, Tempo,
+OpenTelemetry, Grafana, Loki e Zabbix. Crie primeiro os Secrets documentados
+em cada repositório; credenciais não são mantidas neste projeto.
+
 ### 1. Clonar o repositório
 ```bash
 git clone git@github.com:thiagobotelho/argocd-gitops.git
@@ -63,6 +67,9 @@ Se o Argo CD ainda não estiver provisionado, aplique os manifests com `oc`/`kub
 
 ```bash
 oc apply -k base
+oc wait --for=condition=Available deployment/openshift-gitops-server \
+  -n openshift-gitops --timeout=10m
+oc apply -k overlays/apps
 ```
 
 ### 3. Validar instalação
@@ -93,6 +100,10 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 - **IgnoreDifferences**: evitar drift em `Subscription` e `CSV` gerados pelo OLM.  
 - **RBAC**: utilizar `AppProjects` no Argo CD para isolar times e aplicações.  
 - **Segurança**: expor o Argo CD apenas via Route TLS (não usar NodePort).  
+
+> O `ClusterRoleBinding` concede `cluster-admin` ao application controller para
+> o cenário de bootstrap do cluster. Em ambientes compartilhados, substitua-o
+> por papéis mínimos compatíveis com os namespaces e recursos gerenciados.
 
 ---
 

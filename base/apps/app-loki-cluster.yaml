@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thiagobotelho/loki-gitops.git
+    targetRevision: main
+    path: kustomize/overlays/crc
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-logging
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true, PruneLast=true]
