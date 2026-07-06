@@ -4,6 +4,8 @@ metadata:
   name: openshift-gitops-application-controller
   annotations:
     argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/tracking-id: >-
+      argocd-cluster:rbac.authorization.k8s.io/ClusterRoleBinding:openshift-gitops/openshift-gitops-application-controller
 subjects:
   - kind: ServiceAccount
     name: openshift-gitops-argocd-application-controller
