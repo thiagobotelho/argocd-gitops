@@ -13,6 +13,13 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: metallb-system
+  ignoreDifferences:
+    - group: metallb.io
+      kind: IPAddressPool
+      name: lb-pool
+      namespace: metallb-system
+      jsonPointers:
+        - /spec/addresses
   syncPolicy:
     automated:
       prune: true
@@ -21,3 +28,4 @@ spec:
       - CreateNamespace=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
+      - RespectIgnoreDifferences=true
