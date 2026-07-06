@@ -21,5 +21,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true
       - PrunePropagationPolicy=foreground
       - PruneLast=true
