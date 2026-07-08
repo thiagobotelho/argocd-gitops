@@ -1,0 +1,58 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/apps
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: platform-applications
+      app.kubernetes.io/instance: platform-applications-aceite
+      app.kubernetes.io/component: app-of-apps
+      app.kubernetes.io/part-of: platform
+      app.kubernetes.io/managed-by: argocd
+      app.kubernetes.io/environment: aceite
+    includeSelectors: false
+
+patches:
+  - target: {kind: Application, name: grafana}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite
+  - target: {kind: Application, name: keycloak-dev}
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: keycloak-aceite
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite
+      - op: replace
+        path: /spec/destination/namespace
+        value: keycloak-uat
+  - target: {kind: Application, name: loki}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite
+  - target: {kind: Application, name: metallb-cluster}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite
+  - target: {kind: Application, name: opentelemetry}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite
+  - target: {kind: Application, name: tempo-monolithic}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite
+  - target: {kind: Application, name: zabbix}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/aceite

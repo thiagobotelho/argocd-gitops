@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/opentelemetry-gitops.git
     targetRevision: main
-    path: overlays/crc
+    path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
     namespace: observability

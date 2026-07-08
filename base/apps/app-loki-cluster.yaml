@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/loki-gitops.git
     targetRevision: main
-    path: kustomize/overlays/crc
+    path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-logging

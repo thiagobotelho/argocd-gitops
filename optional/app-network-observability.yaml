@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/network-observability-gitops.git
     targetRevision: main
-    path: overlays/crc
+    path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-netobserv-operator

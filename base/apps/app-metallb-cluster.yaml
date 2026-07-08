@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/metallb-gitops.git
     targetRevision: main
-    path: overlays/cluster
+    path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
     namespace: metallb-system

@@ -69,7 +69,7 @@ Se o Argo CD ainda não estiver provisionado, aplique os manifests com `oc`/`kub
 oc apply -k base
 oc wait --for=condition=Available deployment/openshift-gitops-server \
   -n openshift-gitops --timeout=10m
-oc apply -k overlays/apps
+oc apply -k overlays/desenvolvimento
 ```
 
 ### 3. Validar instalação
@@ -121,6 +121,28 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 - [OpenShift GitOps Documentation](https://docs.openshift.com/container-platform/latest/cicd/gitops/understanding-openshift-gitops.html)  
 - [Argo CD Official](https://argo-cd.readthedocs.io/en/stable/)  
 - [Kustomize Docs](https://kubectl.docs.kubernetes.io/guides/introduction/kustomize/)  
+
+## Ambientes e validação
+
+```bash
+oc kustomize overlays/desenvolvimento >/tmp/argocd-dev.yaml
+oc kustomize overlays/aceite >/tmp/argocd-aceite.yaml
+oc kustomize overlays/producao >/tmp/argocd-prod.yaml
+oc kustomize overlays/applications/desenvolvimento >/tmp/apps-dev.yaml
+oc apply --dry-run=client -k overlays/desenvolvimento
+```
+
+O app-of-apps de `desenvolvimento` aponta para `overlays/desenvolvimento` dos
+repos gerenciados. `aceite` e `producao` apontam para os overlays equivalentes.
+Veja `docs/AMBIENTES.md`.
+
+## Automatizações preservadas e ajustadas
+
+- Mantido `.github/workflows/validate.yml`, renderizando todos os
+  `kustomization.yaml` e executando `yamllint`.
+- Ajustados os `Application` dos componentes para usarem overlays padronizados.
+- Criados `overlays/applications/{desenvolvimento,aceite,producao}` para o
+  app-of-apps por ambiente.
 
 ---
 

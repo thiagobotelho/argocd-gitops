@@ -9,7 +9,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/keycloak-gitops.git
     targetRevision: main
-    path: overlays/dev
+    path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
     namespace: keycloak-dev
