@@ -46,6 +46,15 @@ cp -n .env.example .env
 scripts/validate-crc.sh
 ```
 
+Se `crc` ou `oc` não estiverem no `PATH`, o validador tenta usar
+`bin/crc-linux-*/crc`, `~/.local/bin/oc` ou o cache do CRC. Se necessário,
+edite `.env` e defina:
+
+```dotenv
+CRC_BIN=/home/thiagobotelho/openshift-local-installer/bin/crc-linux-2.62.0-amd64/crc
+OC_BIN=/home/thiagobotelho/.local/bin/oc
+```
+
 Avisos de namespace ausente são esperados antes do app-of-apps subir.
 
 ## 3. Atualizar os repositórios locais
