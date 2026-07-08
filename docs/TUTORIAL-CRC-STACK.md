@@ -1,8 +1,8 @@
 # Tutorial CRC/OpenShift Local da stack GitOps
 
-Este roteiro aplica a stack local usando os repositórios em
-`/home/thiagobotelho` e o app-of-apps do `argocd-gitops`. Ele assume um CRC
-local, com `oc` autenticado e permissões de administrador.
+Este roteiro aplica a stack local a partir dos repositórios GitHub da solução.
+Ele não depende de um caminho local fixo: escolha um diretório de trabalho,
+clone os repositórios e execute os comandos a partir dele.
 
 ## 1. O que será instalado
 
@@ -18,7 +18,42 @@ local, com `oc` autenticado e permissões de administrador.
 | Zabbix | Monitoramento sintético/API e integração com Grafana. |
 | Network Observability | Opcional; coleta fluxos de rede com eBPF e políticas do FlowCollector. |
 
-## 2. Preparar o CRC
+## 2. Clonar os repositórios
+
+Defina a organização/usuário GitHub onde os repositórios estão publicados e um
+diretório de trabalho. Use HTTPS ou SSH conforme seu ambiente.
+
+```bash
+export GIT_BASE_URL="https://github.com/<usuario-ou-org>"
+export WORKDIR="${HOME}/src/openshift-local-stack"
+
+mkdir -p "${WORKDIR}"
+cd "${WORKDIR}"
+
+for repo in \
+  openshift-local-installer \
+  argocd-gitops \
+  metallb-gitops \
+  loki-gitops \
+  tempo-gitops \
+  opentelemetry-gitops \
+  keycloak-gitops \
+  grafana-gitops \
+  zabbix-gitops \
+  network-observability-gitops
+do
+  if [ -d "${repo}/.git" ]; then
+    git -C "${repo}" pull --ff-only
+  else
+    git clone "${GIT_BASE_URL}/${repo}.git"
+  fi
+done
+```
+
+Se você fez fork dos repositórios, altere `GIT_BASE_URL` para o seu fork antes
+de executar o loop e revise os `repoURL` das `Application` no `argocd-gitops`.
+
+## 3. Preparar o CRC
 
 Use recursos altos o bastante para a stack de observabilidade:
 
@@ -41,40 +76,21 @@ oc whoami
 Valide o cluster:
 
 ```bash
-cd /home/thiagobotelho/openshift-local-installer
+cd "${WORKDIR}/openshift-local-installer"
 cp -n .env.example .env
 scripts/validate-crc.sh
 ```
 
-Se `crc` ou `oc` não estiverem no `PATH`, o validador tenta usar
-`bin/crc-linux-*/crc`, `~/.local/bin/oc` ou o cache do CRC. Se necessário,
-edite `.env` e defina:
+Se `crc` ou `oc` não estiverem no `PATH`, o validador tenta usar binários
+conhecidos, como `bin/crc-linux-*/crc`, `~/.local/bin/oc` ou o cache do CRC. Se
+necessário, edite `.env` e defina caminhos locais:
 
 ```dotenv
-CRC_BIN=/home/thiagobotelho/openshift-local-installer/bin/crc-linux-2.62.0-amd64/crc
-OC_BIN=/home/thiagobotelho/.local/bin/oc
+CRC_BIN=/caminho/para/crc
+OC_BIN=/caminho/para/oc
 ```
 
 Avisos de namespace ausente são esperados antes do app-of-apps subir.
-
-## 3. Atualizar os repositórios locais
-
-```bash
-for repo in \
-  openshift-local-installer \
-  argocd-gitops \
-  metallb-gitops \
-  loki-gitops \
-  tempo-gitops \
-  opentelemetry-gitops \
-  keycloak-gitops \
-  grafana-gitops \
-  zabbix-gitops \
-  network-observability-gitops
-do
-  git -C "/home/thiagobotelho/${repo}" pull --ff-only
-done
-```
 
 ## 4. Criar os Secrets obrigatórios
 
@@ -114,7 +130,7 @@ oc -n keycloak-dev create secret generic keycloak-db-secret \
   --from-literal=database=keycloak \
   --dry-run=client -o yaml | oc apply -f -
 
-cd /home/thiagobotelho/keycloak-gitops
+cd "${WORKDIR}/keycloak-gitops"
 cp -n .env.example .env
 scripts/bootstrap-observability-users.sh
 ```
@@ -140,7 +156,7 @@ Zabbix, quando a API estiver disponível.
 ## 5. Subir o OpenShift GitOps
 
 ```bash
-cd /home/thiagobotelho/argocd-gitops
+cd "${WORKDIR}/argocd-gitops"
 oc apply -k overlays/cluster
 
 oc -n openshift-gitops wait --for=condition=Available \
@@ -152,7 +168,7 @@ oc -n openshift-gitops get pods,route
 ## 6. Aplicar o app-of-apps local
 
 ```bash
-cd /home/thiagobotelho/argocd-gitops
+cd "${WORKDIR}/argocd-gitops"
 oc apply -k overlays/desenvolvimento
 ```
 
@@ -189,7 +205,7 @@ Execute depois que o Keycloak estiver saudável e o Job do realm tiver rodado:
 ```bash
 oc -n keycloak-dev get keycloak,pods,route
 
-cd /home/thiagobotelho/grafana-gitops
+cd "${WORKDIR}/grafana-gitops"
 cp -n .env.example .env
 scripts/bootstrap-grafana-oauth.sh
 ```
@@ -211,7 +227,7 @@ oc -n grafana rollout restart deployment/grafana-deployment 2>/dev/null || true
 Defina a senha administrativa atual do Zabbix no `.env` do repo:
 
 ```bash
-cd /home/thiagobotelho/zabbix-gitops
+cd "${WORKDIR}/zabbix-gitops"
 cp -n .env.example .env
 ```
 
@@ -291,7 +307,7 @@ cluster e consome recursos extras no CRC.
 Para habilitar:
 
 ```bash
-cd /home/thiagobotelho/argocd-gitops
+cd "${WORKDIR}/argocd-gitops"
 oc apply -k optional
 ```
 
