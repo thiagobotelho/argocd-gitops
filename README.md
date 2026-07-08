@@ -14,7 +14,7 @@ Este repositório implementa práticas de **Infrastructure as Code (IaC)**, gara
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```mermaid
 flowchart TD
@@ -44,7 +44,12 @@ argocd-gitops/
 │   ├── namespace.yaml         # Namespace openshift-gitops
 │   ├── operatorgroup.yaml     # OperatorGroup
 │   ├── subscription.yaml      # Subscription do Operator
-└── └── argocd.yaml            # Instância ArgoCD (CR)
+├── overlays/cluster/          # Bootstrap do OpenShift GitOps
+├── overlays/desenvolvimento/  # App-of-apps para CRC/local
+├── overlays/aceite/           # App-of-apps para homologação
+├── overlays/producao/         # App-of-apps para produção
+├── overlays/applications/     # Applications renderizadas por ambiente
+└── optional/                  # Applications opcionais, ex.: Network Observability
 
 ```
 
@@ -52,9 +57,13 @@ argocd-gitops/
 
 ## 🚀 Como utilizar
 
-O App-of-Apps em `overlays/apps` gerencia Keycloak, MetalLB, Tempo,
-OpenTelemetry, Grafana, Loki e Zabbix. Crie primeiro os Secrets documentados
-em cada repositório; credenciais não são mantidas neste projeto.
+O App-of-Apps em `overlays/desenvolvimento` gerencia Keycloak, MetalLB, Tempo,
+OpenTelemetry, Grafana, Loki e Zabbix no CRC. As aplicações apontam para os
+overlays equivalentes em cada repositório e todas usam sync automático com
+`prune` e `selfHeal`. Crie primeiro os Secrets documentados em cada
+repositório; credenciais não são mantidas neste projeto.
+
+Tutorial completo da stack local: [docs/TUTORIAL-CRC-STACK.md](docs/TUTORIAL-CRC-STACK.md).
 
 ### 1. Clonar o repositório
 ```bash
@@ -66,7 +75,7 @@ cd argocd-gitops
 Se o Argo CD ainda não estiver provisionado, aplique os manifests com `oc`/`kubectl`:
 
 ```bash
-oc apply -k base
+oc apply -k overlays/cluster
 oc wait --for=condition=Available deployment/openshift-gitops-server \
   -n openshift-gitops --timeout=10m
 oc apply -k overlays/desenvolvimento
@@ -135,15 +144,3 @@ oc apply --dry-run=client -k overlays/desenvolvimento
 O app-of-apps de `desenvolvimento` aponta para `overlays/desenvolvimento` dos
 repos gerenciados. `aceite` e `producao` apontam para os overlays equivalentes.
 Veja `docs/AMBIENTES.md`.
-
-## Automatizações preservadas e ajustadas
-
-- Mantido `.github/workflows/validate.yml`, renderizando todos os
-  `kustomization.yaml` e executando `yamllint`.
-- Ajustados os `Application` dos componentes para usarem overlays padronizados.
-- Criados `overlays/applications/{desenvolvimento,aceite,producao}` para o
-  app-of-apps por ambiente.
-
----
-
-👨‍💻 **Maintainer:** [Thiago Botelho](https://github.com/thiagobotelho)

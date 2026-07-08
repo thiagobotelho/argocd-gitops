@@ -30,7 +30,7 @@ patches:
         value: overlays/aceite
       - op: replace
         path: /spec/destination/namespace
-        value: keycloak-uat
+        value: keycloak-aceite
   - target: {kind: Application, name: loki}
     patch: |-
       - op: replace

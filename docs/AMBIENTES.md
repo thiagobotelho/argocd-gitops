@@ -22,7 +22,3 @@ Decisões:
 - O ambiente CRC usa `desenvolvimento`.
 - O `Application` `argocd-cluster` continua apontando para `overlays/cluster`, pois representa a instalação do próprio OpenShift GitOps.
 - `network-observability` permanece opt-in em `optional/` por consumir recursos adicionais.
-
-Automação preservada:
-
-- `.github/workflows/validate.yml`: renderiza todos os Kustomizations e executa `yamllint`.

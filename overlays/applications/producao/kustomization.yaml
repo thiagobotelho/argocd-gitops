@@ -30,7 +30,7 @@ patches:
         value: overlays/producao
       - op: replace
         path: /spec/destination/namespace
-        value: keycloak-prd
+        value: keycloak-producao
   - target: {kind: Application, name: loki}
     patch: |-
       - op: replace

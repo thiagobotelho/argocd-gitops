@@ -1,0 +1,345 @@
+# Tutorial CRC/OpenShift Local da stack GitOps
+
+Este roteiro aplica a stack local usando os repositórios em
+`/home/thiagobotelho` e o app-of-apps do `argocd-gitops`. Ele assume um CRC
+local, com `oc` autenticado e permissões de administrador.
+
+## 1. O que será instalado
+
+| Recurso | Para que serve |
+|---|---|
+| OpenShift GitOps/Argo CD | Controla os repositórios GitOps, faz sync automático, prune e self-heal. |
+| MetalLB | Fornece IPs `LoadBalancer` no CRC quando necessário. |
+| Loki | Recebe logs do OpenShift e permite correlação logs ↔ traces no Grafana. |
+| Tempo | Armazena traces OTLP em modo leve `TempoMonolithic` para o CRC. |
+| OpenTelemetry Collector | Recebe OTLP das aplicações, envia traces ao Tempo e expõe métricas RED. |
+| Keycloak | Realm central `observability`, usuários, grupos, client OIDC do Grafana e client SAML do Zabbix. |
+| Grafana | Dashboards, datasources Prometheus/Loki/Tempo/Zabbix, autenticação via Keycloak e drilldown. |
+| Zabbix | Monitoramento sintético/API e integração com Grafana. |
+| Network Observability | Opcional; coleta fluxos de rede com eBPF e políticas do FlowCollector. |
+
+## 2. Preparar o CRC
+
+Use recursos altos o bastante para a stack de observabilidade:
+
+```bash
+crc config set enable-cluster-monitoring true
+crc config set cpus 8
+crc config set memory 32768
+crc stop
+crc start
+```
+
+Autentique o `oc`:
+
+```bash
+eval "$(crc oc-env)"
+oc login --token='<TOKEN>' --server=https://api.crc.testing:6443
+oc whoami
+```
+
+Valide o cluster:
+
+```bash
+cd /home/thiagobotelho/openshift-local-installer
+cp -n .env.example .env
+scripts/validate-crc.sh
+```
+
+Avisos de namespace ausente são esperados antes do app-of-apps subir.
+
+## 3. Atualizar os repositórios locais
+
+```bash
+for repo in \
+  openshift-local-installer \
+  argocd-gitops \
+  metallb-gitops \
+  loki-gitops \
+  tempo-gitops \
+  opentelemetry-gitops \
+  keycloak-gitops \
+  grafana-gitops \
+  zabbix-gitops \
+  network-observability-gitops
+do
+  git -C "/home/thiagobotelho/${repo}" pull --ff-only
+done
+```
+
+## 4. Criar os Secrets obrigatórios
+
+Nenhuma senha real deve ser commitada. Os comandos abaixo são idempotentes
+porque usam `--dry-run=client -o yaml | oc apply -f -`.
+
+### 4.1 Loki/MinIO
+
+```bash
+export MINIO_ROOT_USER=minio
+export MINIO_ROOT_PASSWORD="$(openssl rand -base64 32)"
+
+oc create namespace openshift-logging --dry-run=client -o yaml | oc apply -f -
+
+oc -n openshift-logging create secret generic minio-credentials \
+  --from-literal=root-user="${MINIO_ROOT_USER}" \
+  --from-literal=root-password="${MINIO_ROOT_PASSWORD}" \
+  --dry-run=client -o yaml | oc apply -f -
+
+oc -n openshift-logging create secret generic loki-s3 \
+  --from-literal=access_key_id="${MINIO_ROOT_USER}" \
+  --from-literal=access_key_secret="${MINIO_ROOT_PASSWORD}" \
+  --from-literal=bucketnames=loki \
+  --from-literal=endpoint=http://minio.openshift-logging.svc:9000 \
+  --from-literal=region=us-east-1 \
+  --dry-run=client -o yaml | oc apply -f -
+```
+
+### 4.2 Keycloak
+
+```bash
+oc create namespace keycloak-dev --dry-run=client -o yaml | oc apply -f -
+
+oc -n keycloak-dev create secret generic keycloak-db-secret \
+  --from-literal=username=keycloak \
+  --from-literal=password="$(openssl rand -base64 32)" \
+  --from-literal=database=keycloak \
+  --dry-run=client -o yaml | oc apply -f -
+
+cd /home/thiagobotelho/keycloak-gitops
+cp -n .env.example .env
+scripts/bootstrap-observability-users.sh
+```
+
+O script cria `keycloak-dev/keycloak-observability-users`, usado pelo Job que
+importa o realm `observability`.
+
+### 4.3 Zabbix
+
+```bash
+oc create namespace zabbix --dry-run=client -o yaml | oc apply -f -
+
+oc -n zabbix create secret generic zabbix-db \
+  --from-literal=username=zabbix \
+  --from-literal=password="$(openssl rand -base64 32)" \
+  --from-literal=database=zabbix \
+  --dry-run=client -o yaml | oc apply -f -
+```
+
+O Secret `grafana/zabbix-datasource` será criado depois pelo bootstrap do
+Zabbix, quando a API estiver disponível.
+
+## 5. Subir o OpenShift GitOps
+
+```bash
+cd /home/thiagobotelho/argocd-gitops
+oc apply -k overlays/cluster
+
+oc -n openshift-gitops wait --for=condition=Available \
+  deployment/openshift-gitops-server --timeout=10m
+
+oc -n openshift-gitops get pods,route
+```
+
+## 6. Aplicar o app-of-apps local
+
+```bash
+cd /home/thiagobotelho/argocd-gitops
+oc apply -k overlays/desenvolvimento
+```
+
+O `platform-apps` cria as `Application` dos demais repositórios. Todas as
+aplicações versionadas usam sync automático:
+
+```yaml
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+```
+
+Acompanhe a sincronização:
+
+```bash
+oc -n openshift-gitops get applications.argoproj.io
+watch 'oc -n openshift-gitops get applications.argoproj.io'
+```
+
+Se quiser forçar novo refresh após um push:
+
+```bash
+oc -n openshift-gitops annotate application platform-apps \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+## 7. Bootstraps pós-sync
+
+### 7.1 Grafana OAuth via Keycloak
+
+Execute depois que o Keycloak estiver saudável e o Job do realm tiver rodado:
+
+```bash
+oc -n keycloak-dev get keycloak,pods,route
+
+cd /home/thiagobotelho/grafana-gitops
+cp -n .env.example .env
+scripts/bootstrap-grafana-oauth.sh
+```
+
+Isso cria `grafana/grafana-oauth` com `client-id` e `client-secret` do client
+`grafana` no Keycloak.
+
+Depois, force o sync/restart do Grafana se ele já tiver tentado subir sem o
+Secret:
+
+```bash
+oc -n openshift-gitops annotate application grafana \
+  argocd.argoproj.io/refresh=hard --overwrite
+oc -n grafana rollout restart deployment/grafana-deployment 2>/dev/null || true
+```
+
+### 7.2 Zabbix API, SAML e datasource do Grafana
+
+Defina a senha administrativa atual do Zabbix no `.env` do repo:
+
+```bash
+cd /home/thiagobotelho/zabbix-gitops
+cp -n .env.example .env
+```
+
+Edite `.env` e preencha:
+
+```dotenv
+ZABBIX_ADMIN_PASSWORD=<senha-admin-atual>
+```
+
+Então execute:
+
+```bash
+scripts/bootstrap-zabbix.sh
+```
+
+O bootstrap cria ou atualiza:
+
+- usuário técnico `grafana-datasource`;
+- grupo `Grafana datasource readers`;
+- Secret `grafana/zabbix-datasource`;
+- SAML do Zabbix apontando para Keycloak;
+- hosts e web scenarios HTTP para OpenShift API, Argo CD, Keycloak, Grafana e Zabbix.
+
+## 8. Validar a stack
+
+```bash
+oc -n openshift-gitops get applications.argoproj.io
+oc get ns keycloak-dev grafana zabbix observability tempo openshift-logging
+oc -n grafana get grafana,grafanadatasource,grafanadashboard,route
+oc -n tempo get tempomonolithic,pods,svc,pvc
+oc -n observability get opentelemetrycollector,pods,svc,servicemonitor
+oc -n zabbix get pods,svc,route
+```
+
+Valide os datasources do Grafana pela UI ou API. O health check do Tempo pode
+retornar `404` no endpoint `/api/echo` do gateway multi-tenant do Operator; isso
+não significa necessariamente que queries reais de trace falharam.
+
+## 9. Drilldown no Grafana
+
+O Grafana fica provisionado com:
+
+- Prometheus/Thanos: métricas do OpenShift e workloads;
+- Loki: logs e derived field `trace_id` → Tempo;
+- Tempo: TraceQL, `tracesToLogsV2`, `tracesToMetrics`, `nodeGraph` e `serviceMap`;
+- Zabbix: plugin `alexanderzobnin-zabbix-app`.
+
+No CRC, o caminho suportado é:
+
+```text
+Aplicação -> OpenTelemetry Collector -> TempoMonolithic
+                              └-------> Prometheus: traces_span_metrics_*
+Grafana -> Tempo/Loki/Prometheus/Zabbix
+```
+
+O Red Hat OpenTelemetry Collector 0.152.1 validado neste ambiente possui
+`span_metrics`, mas não possui connector `servicegraph`. Por isso:
+
+- Traces Drilldown/TraceQL e links trace → logs/métricas ficam preparados;
+- Service Graph fica configurado no datasource, mas só mostrará dados se houver
+  métricas `traces_service_graph_*`;
+- para Service Graph completo, evolua para TempoStack com object storage e
+  metrics-generator, ou adicione Grafana Alloy/collector compatível.
+
+Valide os componentes do collector:
+
+```bash
+oc -n observability exec deploy/otel-collector-collector -- \
+  /usr/bin/opentelemetry-collector components
+```
+
+## 10. Network Observability opcional
+
+O Network Observability permanece opt-in porque usa eBPF, coleta em nível de
+cluster e consome recursos extras no CRC.
+
+Para habilitar:
+
+```bash
+cd /home/thiagobotelho/argocd-gitops
+oc apply -k optional
+```
+
+Políticas aplicadas no repo `network-observability-gitops`:
+
+- `spec.networkPolicy.enable: true`;
+- `deploymentModel: Direct`;
+- `agent.ebpf.sampling: 100`;
+- métricas reduzidas para controlar cardinalidade;
+- documentação em `network-observability-gitops/docs/POLITICAS.md`.
+
+Valide:
+
+```bash
+oc get flowcollector cluster
+oc -n netobserv get pods
+oc adm top pods -n netobserv
+```
+
+## 11. Reexecutar, limpar e diagnosticar
+
+Reexecutar é seguro: os scripts usam criação idempotente de Secret/API sempre
+que possível.
+
+Forçar sync de um app:
+
+```bash
+oc -n openshift-gitops annotate application <app> \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+Ver diff/sync pelo Argo CD:
+
+```bash
+oc -n openshift-gitops get application <app> -o yaml
+```
+
+Remover somente o opcional:
+
+```bash
+oc -n openshift-gitops delete application network-observability
+```
+
+Remover o CRC inteiro:
+
+```bash
+crc stop
+crc delete
+```
+
+## 12. Limitações do CRC
+
+- Single-node, sem alta disponibilidade.
+- PVC local e capacidade limitada.
+- Tempo usa `TempoMonolithic`; `TempoStack` exige object storage suportado.
+- Network Observability aumenta uso de CPU/memória.
+- Alguns Operators demoram para instalar CRDs; `SkipDryRunOnMissingResource`
+  está configurado onde necessário.
+- Rotas usam certificados locais do CRC; em produção revise TLS, CA, cookies e
+  headers.
