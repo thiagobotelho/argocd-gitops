@@ -24,7 +24,7 @@ Defina a organização/usuário GitHub onde os repositórios estão publicados e
 diretório de trabalho. Use HTTPS ou SSH conforme seu ambiente.
 
 ```bash
-export GIT_BASE_URL="https://github.com/<usuario-ou-org>"
+export GIT_BASE_URL="https://github.com/thiagobotelho"
 export WORKDIR="${HOME}/src/openshift-local-stack"
 
 mkdir -p "${WORKDIR}"
