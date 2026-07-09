@@ -69,7 +69,7 @@ Autentique o `oc`:
 
 ```bash
 eval "$(crc oc-env)"
-oc login --token='<TOKEN>' --server=https://api.crc.testing:6443
+oc login -u kubeadmin https://api.crc.testing:6443
 oc whoami
 ```
 
