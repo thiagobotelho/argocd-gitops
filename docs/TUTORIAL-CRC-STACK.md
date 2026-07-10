@@ -27,7 +27,7 @@ de trabalho local qualquer. Use HTTPS ou SSH conforme seu ambiente. O exemplo
 usa placeholder; substitua por sua organização, fork ou mirror.
 
 ```bash
-export GIT_BASE_URL="https://github.com/<org-ou-usuario>"
+export GIT_BASE_URL="https://github.com/thiagobotelho"
 export WORKDIR="${PWD}/openshift-local-stack"
 
 mkdir -p "${WORKDIR}"
