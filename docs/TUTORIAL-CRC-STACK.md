@@ -160,15 +160,32 @@ Zabbix, quando a API estiver disponível.
 
 ## 5. Subir o OpenShift GitOps
 
+Na primeira instalação, não aplique `overlays/cluster` diretamente. Esse
+overlay contém a `ArgoCD` CR, mas a CRD `argocds.argoproj.io` só aparece depois
+que o Operator instalado pelo OLM termina de subir. Se tudo for aplicado em uma
+única chamada, o `oc` pode retornar:
+
+```text
+no matches for kind "ArgoCD" in version "argoproj.io/v1beta1"
+ensure CRDs are installed first
+```
+
+Use o bootstrap em fases:
+
 ```bash
 cd "${WORKDIR}/argocd-gitops"
-oc apply -k overlays/cluster
+scripts/bootstrap-openshift-gitops.sh
 
 oc -n openshift-gitops wait --for=condition=Available \
   deployment/openshift-gitops-server --timeout=10m
 
 oc -n openshift-gitops get pods,route
 ```
+
+O script é idempotente: reaplica `Namespace`, `OperatorGroup` e `Subscription`,
+aguarda a CRD `argocds.argoproj.io`, aplica a `ArgoCD` CR e espera o servidor
+ficar disponível. Depois disso, o app `argocd-cluster` pode reconciliar
+`overlays/cluster` normalmente.
 
 ## 6. Aplicar o app-of-apps local
 
@@ -227,6 +244,23 @@ oc -n openshift-gitops annotate application grafana \
 oc -n grafana rollout restart deployment/grafana-deployment 2>/dev/null || true
 ```
 
+Se o Argo CD exibir `Sync failed` com retry esgotado depois que o Secret já
+existe, dispare uma nova operação de sync pela própria `Application`:
+
+```bash
+APP=grafana
+REV="$(oc -n openshift-gitops get application "${APP}" \
+  -o jsonpath='{.status.sync.revision}')"
+
+oc -n openshift-gitops patch application "${APP}" --type=merge -p \
+  "{\"operation\":{\"initiatedBy\":{\"username\":\"manual\"},\"sync\":{\"revision\":\"${REV}\",\"prune\":true,\"syncOptions\":[\"CreateNamespace=true\",\"SkipDryRunOnMissingResource=true\",\"PruneLast=true\"]}}}"
+
+oc -n openshift-gitops get application "${APP}"
+```
+
+Esse cenário costuma acontecer quando a primeira tentativa falha por uma
+dependência temporária, como `grafana/grafana-oauth` ainda ausente.
+
 ### 7.2 Zabbix API, SAML e datasource do Grafana
 
 Defina a senha administrativa atual do Zabbix no `.env` do repo:
@@ -255,6 +289,11 @@ O bootstrap cria ou atualiza:
 - Secret `grafana/zabbix-datasource`;
 - SAML do Zabbix apontando para Keycloak;
 - hosts e web scenarios HTTP para OpenShift API, Argo CD, Keycloak, Grafana e Zabbix.
+
+Sem o Secret `grafana/zabbix-datasource`, o `GrafanaDatasource` do Zabbix pode
+ser criado pelo Operator, mas ficará sem credenciais para consultar a API do
+Zabbix. Reexecute `scripts/bootstrap-zabbix.sh` sempre que recriar o namespace
+`grafana`, rotacionar a senha/token técnico ou reconstruir o ambiente.
 
 ## 8. Validar a stack
 

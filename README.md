@@ -44,6 +44,8 @@ argocd-gitops/
 │   ├── namespace.yaml         # Namespace openshift-gitops
 │   ├── operatorgroup.yaml     # OperatorGroup
 │   ├── subscription.yaml      # Subscription do Operator
+├── scripts/
+│   └── bootstrap-openshift-gitops.sh # Bootstrap idempotente em fases
 ├── overlays/cluster/          # Bootstrap do OpenShift GitOps
 ├── overlays/desenvolvimento/  # App-of-apps para CRC/local
 ├── overlays/aceite/           # App-of-apps para homologação
@@ -88,14 +90,21 @@ cd argocd-gitops
 ```
 
 ### 2. Aplicar no cluster
-Se o Argo CD ainda não estiver provisionado, aplique os manifests com `oc`/`kubectl`:
+Se o Argo CD ainda não estiver provisionado, use o bootstrap em fases:
 
 ```bash
-oc apply -k overlays/cluster
+scripts/bootstrap-openshift-gitops.sh
 oc wait --for=condition=Available deployment/openshift-gitops-server \
   -n openshift-gitops --timeout=10m
 oc apply -k overlays/desenvolvimento
 ```
+
+Não use `oc apply -k overlays/cluster` como primeira chamada em um cluster novo:
+esse overlay inclui a `ArgoCD` CR, mas a CRD `argocds.argoproj.io` só existe
+depois que o Operator instalado pelo OLM termina de subir. O script aplica
+`Namespace`, `OperatorGroup` e `Subscription`, aguarda a CRD e só então aplica a
+instância `ArgoCD`. Depois da primeira instalação, o próprio app
+`argocd-cluster` continua reconciliando `overlays/cluster`.
 
 ### 3. Validar instalação
 ```bash
