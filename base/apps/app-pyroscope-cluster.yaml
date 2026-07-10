@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pyroscope
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thiagobotelho/pyroscope-gitops.git
+    targetRevision: HEAD
+    path: overlays/desenvolvimento
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pyroscope
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - SkipDryRunOnMissingResource=true

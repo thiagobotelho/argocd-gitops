@@ -6,7 +6,9 @@ resources:
   - app-keycloak-dev.yaml
   - app-argocd-cluster.yaml
   - app-tempo-cluster.yaml
+  - app-prometheus-apps.yaml
   - app-opentelemetry-cluster.yaml
+  - app-pyroscope-cluster.yaml
   - app-grafana-cluster.yaml
   - app-loki-cluster.yaml
   - app-zabbix-cluster.yaml

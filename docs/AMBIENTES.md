@@ -22,3 +22,5 @@ Decisões:
 - O ambiente CRC usa `desenvolvimento`.
 - O `Application` `argocd-cluster` continua apontando para `overlays/cluster`, pois representa a instalação do próprio OpenShift GitOps.
 - `network-observability` permanece opt-in em `optional/` por consumir recursos adicionais.
+- `prometheus-apps` é sincronizado antes do Grafana para disponibilizar o
+  datasource de métricas de aplicações e exemplares.

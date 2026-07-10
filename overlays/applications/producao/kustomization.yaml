@@ -46,6 +46,16 @@ patches:
       - op: replace
         path: /spec/source/path
         value: overlays/producao
+  - target: {kind: Application, name: prometheus-apps}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/producao
+  - target: {kind: Application, name: pyroscope}
+    patch: |-
+      - op: replace
+        path: /spec/source/path
+        value: overlays/producao
   - target: {kind: Application, name: tempo-monolithic}
     patch: |-
       - op: replace

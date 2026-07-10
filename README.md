@@ -10,7 +10,7 @@ Este repositório implementa práticas de **Infrastructure as Code (IaC)**, gara
 - Provisionar o **OpenShift GitOps (Argo CD Operator)** via OLM (Operator Lifecycle Manager).  
 - Criar e gerenciar instâncias do **Argo CD** (`ArgoCD CR`).  
 - Padronizar o fluxo de deploy entre ambientes.  
-- Estabelecer a base para workloads futuros (ex.: Keycloak, Postgres).  
+- Estabelecer a base para workloads da stack local de observabilidade.
 
 ---
 
@@ -57,17 +57,17 @@ argocd-gitops/
 
 ## 🚀 Como utilizar
 
-O App-of-Apps em `overlays/desenvolvimento` gerencia Keycloak, MetalLB, Tempo,
-OpenTelemetry, Grafana, Loki e Zabbix no CRC. As aplicações apontam para os
-overlays equivalentes em cada repositório e todas usam sync automático com
-`prune` e `selfHeal`. Crie primeiro os Secrets documentados em cada
-repositório; credenciais não são mantidas neste projeto.
+O App-of-Apps em `overlays/desenvolvimento` gerencia MetalLB, Prometheus Apps,
+Loki, Tempo, OpenTelemetry, Keycloak, Grafana e Zabbix no CRC. As aplicações
+apontam para os overlays equivalentes em cada repositório e todas usam sync
+automático com `prune` e `selfHeal`. Crie primeiro os Secrets documentados em
+cada repositório; credenciais não são mantidas neste projeto.
 
 Tutorial completo da stack local: [docs/TUTORIAL-CRC-STACK.md](docs/TUTORIAL-CRC-STACK.md).
 
 ### 1. Clonar o repositório
 ```bash
-git clone git@github.com:thiagobotelho/argocd-gitops.git
+git clone https://github.com/<org-ou-usuario>/argocd-gitops.git
 cd argocd-gitops
 ```
 
@@ -119,9 +119,9 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 ## 🔮 Próximos passos
 
 - [ ] Criar um `ArgoCD CR` customizado (HA, RBAC, Redis, Sharding).  
-- [ ] Implementar **App of Apps** para bootstrap de workloads.  
+- [x] Implementar **App of Apps** para bootstrap de workloads.
 - [ ] Integrar com **SealedSecrets** ou **External Secrets Operator** para gestão segura de segredos.  
-- [ ] Configurar monitoramento do Argo CD com **Prometheus/Grafana**.  
+- [x] Configurar monitoramento básico do Argo CD com **Prometheus/Grafana**.
 
 ---
 

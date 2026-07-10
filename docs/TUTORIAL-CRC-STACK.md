@@ -10,6 +10,8 @@ clone os repositórios e execute os comandos a partir dele.
 |---|---|
 | OpenShift GitOps/Argo CD | Controla os repositórios GitOps, faz sync automático, prune e self-heal. |
 | MetalLB | Fornece IPs `LoadBalancer` no CRC quando necessário. |
+| Prometheus Apps | Coleta métricas de aplicações com exemplares e customizações fora do Prometheus nativo da plataforma. |
+| Pyroscope | Armazena profiles para Profiles Drilldown e futura correlação trace → profile. |
 | Loki | Recebe logs do OpenShift e permite correlação logs ↔ traces no Grafana. |
 | Tempo | Armazena traces OTLP em modo leve `TempoMonolithic` para o CRC. |
 | OpenTelemetry Collector | Recebe OTLP das aplicações, envia traces ao Tempo e expõe métricas RED. |
@@ -20,12 +22,13 @@ clone os repositórios e execute os comandos a partir dele.
 
 ## 2. Clonar os repositórios
 
-Defina a organização/usuário GitHub onde os repositórios estão publicados e um
-diretório de trabalho. Use HTTPS ou SSH conforme seu ambiente.
+Defina a URL base pública onde os repositórios estão publicados e um diretório
+de trabalho local qualquer. Use HTTPS ou SSH conforme seu ambiente. O exemplo
+usa placeholder; substitua por sua organização, fork ou mirror.
 
 ```bash
-export GIT_BASE_URL="https://github.com/thiagobotelho"
-export WORKDIR="${HOME}/src/openshift-local-stack"
+export GIT_BASE_URL="https://github.com/<org-ou-usuario>"
+export WORKDIR="${PWD}/openshift-local-stack"
 
 mkdir -p "${WORKDIR}"
 cd "${WORKDIR}"
@@ -34,6 +37,8 @@ for repo in \
   openshift-local-installer \
   argocd-gitops \
   metallb-gitops \
+  prometheus-gitops \
+  pyroscope-gitops \
   loki-gitops \
   tempo-gitops \
   opentelemetry-gitops \
@@ -50,8 +55,8 @@ do
 done
 ```
 
-Se você fez fork dos repositórios, altere `GIT_BASE_URL` para o seu fork antes
-de executar o loop e revise os `repoURL` das `Application` no `argocd-gitops`.
+Se você fez fork dos repositórios, altere `GIT_BASE_URL` para o fork antes de
+executar o loop e revise os `repoURL` das `Application` no `argocd-gitops`.
 
 ## 3. Preparar o CRC
 
@@ -255,7 +260,9 @@ O bootstrap cria ou atualiza:
 
 ```bash
 oc -n openshift-gitops get applications.argoproj.io
-oc get ns keycloak-dev grafana zabbix observability tempo openshift-logging
+oc get ns keycloak-dev grafana zabbix observability observability-apps tempo openshift-logging
+oc -n observability-apps get monitoringstack,pods,svc,pvc
+oc -n pyroscope get statefulset,pods,svc,pvc,servicemonitor
 oc -n grafana get grafana,grafanadatasource,grafanadashboard,route
 oc -n tempo get tempomonolithic,pods,svc,pvc
 oc -n observability get opentelemetrycollector,pods,svc,servicemonitor
@@ -271,6 +278,8 @@ não significa necessariamente que queries reais de trace falharam.
 O Grafana fica provisionado com:
 
 - Prometheus/Thanos: métricas do OpenShift e workloads;
+- Prometheus Apps: métricas de aplicações, span metrics e exemplares;
+- Pyroscope: profiles e datasource para Profiles Drilldown;
 - Loki: logs e derived field `trace_id` → Tempo;
 - Tempo: TraceQL, `tracesToLogsV2`, `tracesToMetrics`, `nodeGraph` e `serviceMap`;
 - Zabbix: plugin `alexanderzobnin-zabbix-app`.
@@ -279,7 +288,7 @@ No CRC, o caminho suportado é:
 
 ```text
 Aplicação -> OpenTelemetry Collector -> TempoMonolithic
-                              └-------> Prometheus: traces_span_metrics_*
+                              └-------> Prometheus Apps: traces_span_metrics_*
 Grafana -> Tempo/Loki/Prometheus/Zabbix
 ```
 
@@ -291,6 +300,9 @@ O Red Hat OpenTelemetry Collector 0.152.1 validado neste ambiente possui
   métricas `traces_service_graph_*`;
 - para Service Graph completo, evolua para TempoStack com object storage e
   metrics-generator, ou adicione Grafana Alloy/collector compatível.
+- Profiles Drilldown usa o backend Pyroscope. Sem aplicações instrumentadas, o
+  datasource fica pronto, mas ainda não haverá flamegraphs nem correlação trace
+  → profile.
 
 Valide os componentes do collector:
 
@@ -298,6 +310,11 @@ Valide os componentes do collector:
 oc -n observability exec deploy/otel-collector-collector -- \
   /usr/bin/opentelemetry-collector components
 ```
+
+Para diagnóstico de erros como `undefined` ou `duration > }` no Traces
+Drilldown, veja `grafana-gitops/docs/DRILLDOWN.md`. Em geral, essas mensagens
+indicam estado/filtros vazios na UI; queries TraceQL válidas devem retornar 200
+no Tempo.
 
 ## 10. Network Observability opcional
 
