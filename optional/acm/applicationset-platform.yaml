@@ -1,0 +1,88 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: openshift-local-stack-platform
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  gitops.stack/managed: "true"
+                matchExpressions:
+                  - key: gitops.stack/environment
+                    operator: In
+                    values:
+                      - desenvolvimento
+                      - aceite
+                      - producao
+                  - key: gitops.stack/keycloak-namespace
+                    operator: Exists
+          - list:
+              elements:
+                - appName: metallb-cluster
+                  repoURL: https://github.com/thiagobotelho/metallb-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: metallb-system
+                - appName: prometheus-apps
+                  repoURL: https://github.com/thiagobotelho/prometheus-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: observability-apps
+                - appName: tempo-monolithic
+                  repoURL: https://github.com/thiagobotelho/tempo-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: openshift-tempo-operator
+                - appName: opentelemetry
+                  repoURL: https://github.com/thiagobotelho/opentelemetry-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: observability
+                - appName: loki
+                  repoURL: https://github.com/thiagobotelho/loki-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: openshift-logging
+                - appName: pyroscope
+                  repoURL: https://github.com/thiagobotelho/pyroscope-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: pyroscope
+                - appName: keycloak
+                  repoURL: https://github.com/thiagobotelho/keycloak-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: keycloak-dev
+                - appName: grafana
+                  repoURL: https://github.com/thiagobotelho/grafana-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: grafana
+                - appName: zabbix
+                  repoURL: https://github.com/thiagobotelho/zabbix-gitops.git
+                  pathPrefix: overlays
+                  destinationNamespace: zabbix
+  template:
+    metadata:
+      name: '{{ .nameNormalized }}-{{ index .metadata.labels "gitops.stack/environment" }}-{{ .appName }}'
+      labels:
+        app.kubernetes.io/part-of: openshift-local-stack
+        gitops.stack/cluster: '{{ .nameNormalized }}'
+        gitops.stack/environment: '{{ index .metadata.labels "gitops.stack/environment" }}'
+        gitops.stack/component: '{{ .appName }}'
+    spec:
+      project: default
+      source:
+        repoURL: '{{ .repoURL }}'
+        targetRevision: main
+        path: '{{ .pathPrefix }}/{{ index .metadata.labels "gitops.stack/environment" }}'
+      destination:
+        server: '{{ .server }}'
+        namespace: '{{ if eq .appName "keycloak" }}{{ index .metadata.labels "gitops.stack/keycloak-namespace" }}{{ else }}{{ .destinationNamespace }}{{ end }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true

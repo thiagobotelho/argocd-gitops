@@ -6,6 +6,8 @@ Este repositório gerencia o Argo CD/OpenShift GitOps e o app-of-apps da platafo
 - `overlays/aceite`: cria o app-of-apps que aponta para `overlays/aceite`.
 - `overlays/producao`: cria o app-of-apps que aponta para `overlays/producao`.
 - `overlays/applications/*`: renderiza as `Application` dos componentes para cada ambiente.
+- `optional/acm`: gera `Application` por cluster/ambiente via `ApplicationSet`
+  para uso com Red Hat Advanced Cluster Management.
 
 Validação:
 
@@ -24,3 +26,6 @@ Decisões:
 - `network-observability` permanece opt-in em `optional/` por consumir recursos adicionais.
 - `prometheus-apps` é sincronizado antes do Grafana para disponibilizar o
   datasource de métricas de aplicações e exemplares.
+- Em ACM, não reutilize nomes simples como `grafana` ou `zabbix` para vários
+  clusters no mesmo Argo CD. Use o padrão do `optional/acm`:
+  `<cluster-normalizado>-<ambiente>-<componente>`.

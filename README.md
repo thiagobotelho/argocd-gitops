@@ -49,7 +49,7 @@ argocd-gitops/
 ├── overlays/aceite/           # App-of-apps para homologação
 ├── overlays/producao/         # App-of-apps para produção
 ├── overlays/applications/     # Applications renderizadas por ambiente
-└── optional/                  # Applications opcionais, ex.: Network Observability
+└── optional/                  # Manifests opcionais, ex.: ACM e Network Observability
 
 ```
 
@@ -64,6 +64,22 @@ automático com `prune` e `selfHeal`. Crie primeiro os Secrets documentados em
 cada repositório; credenciais não são mantidas neste projeto.
 
 Tutorial completo da stack local: [docs/TUTORIAL-CRC-STACK.md](docs/TUTORIAL-CRC-STACK.md).
+
+### CRC local x ACM multi-cluster
+
+O fluxo CRC/local usa App-of-Apps e nomes simples de `Application`, como
+`grafana`, `zabbix` e `keycloak-dev`. Esse modelo é ótimo para um cluster só.
+
+Em ACM/OpenShift GitOps centralizado, use o caminho opcional
+[optional/acm](optional/acm/README.md). Ele registra clusters por `Placement` +
+`GitOpsCluster` e gera aplicações via `ApplicationSet` com nomes no formato:
+
+```text
+<cluster-normalizado>-<ambiente>-<componente>
+```
+
+Assim, três clusters de desenvolvimento, aceite e produção podem sincronizar os
+mesmos repositórios sem colisão ou ambiguidade de nomes.
 
 ### 1. Clonar o repositório
 ```bash
@@ -120,6 +136,7 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 
 - [ ] Criar um `ArgoCD CR` customizado (HA, RBAC, Redis, Sharding).  
 - [x] Implementar **App of Apps** para bootstrap de workloads.
+- [x] Adicionar modelo opcional de **ApplicationSet** para ACM/multi-cluster.
 - [ ] Integrar com **SealedSecrets** ou **External Secrets Operator** para gestão segura de segredos.  
 - [x] Configurar monitoramento básico do Argo CD com **Prometheus/Grafana**.
 
