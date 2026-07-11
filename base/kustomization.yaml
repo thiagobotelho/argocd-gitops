@@ -7,3 +7,4 @@ resources:
   - subscription.yaml
   - argocd.yaml
   - clusterrolebinding.yaml
+  - openshift-apiserver-check-endpoints-networkpolicy.yaml
