@@ -105,7 +105,7 @@ Avisos de namespace ausente são esperados antes do app-of-apps subir.
 ## 4. Criar os Secrets obrigatórios
 
 Nenhuma senha real deve ser commitada. Os comandos abaixo são idempotentes
-porque usam `--dry-run=client -o yaml | oc apply -f -`.
+porque usam `--dry-run=client -o yaml | oc apply --server-side -f -`.
 
 ### 4.1 Loki/MinIO
 
@@ -113,12 +113,12 @@ porque usam `--dry-run=client -o yaml | oc apply -f -`.
 export MINIO_ROOT_USER=minio
 export MINIO_ROOT_PASSWORD="$(openssl rand -base64 32)"
 
-oc create namespace openshift-logging --dry-run=client -o yaml | oc apply -f -
+oc create namespace openshift-logging --dry-run=client -o yaml | oc apply --server-side -f -
 
 oc -n openshift-logging create secret generic minio-credentials \
   --from-literal=root-user="${MINIO_ROOT_USER}" \
   --from-literal=root-password="${MINIO_ROOT_PASSWORD}" \
-  --dry-run=client -o yaml | oc apply -f -
+  --dry-run=client -o yaml | oc apply --server-side -f -
 
 oc -n openshift-logging create secret generic loki-s3 \
   --from-literal=access_key_id="${MINIO_ROOT_USER}" \
@@ -126,19 +126,19 @@ oc -n openshift-logging create secret generic loki-s3 \
   --from-literal=bucketnames=loki \
   --from-literal=endpoint=http://minio.openshift-logging.svc:9000 \
   --from-literal=region=us-east-1 \
-  --dry-run=client -o yaml | oc apply -f -
+  --dry-run=client -o yaml | oc apply --server-side -f -
 ```
 
 ### 4.2 Keycloak
 
 ```bash
-oc create namespace keycloak-dev --dry-run=client -o yaml | oc apply -f -
+oc create namespace keycloak-dev --dry-run=client -o yaml | oc apply --server-side -f -
 
 oc -n keycloak-dev create secret generic keycloak-db-secret \
   --from-literal=username=keycloak \
   --from-literal=password="$(openssl rand -base64 32)" \
   --from-literal=database=keycloak \
-  --dry-run=client -o yaml | oc apply -f -
+  --dry-run=client -o yaml | oc apply --server-side -f -
 
 cd "${WORKDIR}/keycloak-gitops"
 cp -n .env.example .env
@@ -151,13 +151,13 @@ importa o realm `observability`.
 ### 4.3 Zabbix
 
 ```bash
-oc create namespace zabbix --dry-run=client -o yaml | oc apply -f -
+oc create namespace zabbix --dry-run=client -o yaml | oc apply --server-side -f -
 
 oc -n zabbix create secret generic zabbix-db \
   --from-literal=username=zabbix \
   --from-literal=password="$(openssl rand -base64 32)" \
   --from-literal=database=zabbix \
-  --dry-run=client -o yaml | oc apply -f -
+  --dry-run=client -o yaml | oc apply --server-side -f -
 ```
 
 O Secret `grafana/zabbix-datasource` será criado depois pelo bootstrap do
