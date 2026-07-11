@@ -3,16 +3,12 @@
 Repositório GitOps para instalação e configuração do **Argo CD** em ambientes **OpenShift/Kubernetes** utilizando o **OpenShift GitOps Operator**.  
 Este repositório implementa práticas de **Infrastructure as Code (IaC)**, garantindo versionamento, rastreabilidade.
 
----
-
-## 📌 Objetivo
+## Objetivo
 
 - Provisionar o **OpenShift GitOps (Argo CD Operator)** via OLM (Operator Lifecycle Manager).  
 - Criar e gerenciar instâncias do **Argo CD** (`ArgoCD CR`).  
 - Padronizar o fluxo de deploy entre ambientes.  
 - Estabelecer a base para workloads da stack local de observabilidade.
-
----
 
 ## Arquitetura
 
@@ -32,9 +28,7 @@ flowchart TD
     end
 ```
 
----
-
-## 📂 Estrutura do Repositório
+## Estrutura
 
 ```bash
 argocd-gitops/
@@ -55,9 +49,7 @@ argocd-gitops/
 
 ```
 
----
-
-## 🚀 Como utilizar
+## Deploy
 
 O App-of-Apps em `overlays/desenvolvimento` gerencia MetalLB, Prometheus Apps,
 Loki, Tempo, OpenTelemetry, Keycloak, Grafana e Zabbix no CRC. As aplicações
@@ -94,8 +86,6 @@ Se o Argo CD ainda não estiver provisionado, use o bootstrap em fases:
 
 ```bash
 scripts/bootstrap-openshift-gitops.sh
-oc wait --for=condition=Available deployment/openshift-gitops-server \
-  -n openshift-gitops --timeout=10m
 oc apply -k overlays/desenvolvimento
 ```
 
@@ -116,18 +106,14 @@ oc get route -n openshift-gitops openshift-gitops-server
 - **Acesso à UI**: via Route exposta.  
 - **Autenticação**: integrada ao OAuth do OpenShift. Usuários com `cluster-admin` têm acesso administrativo inicial.  
 
----
-
-## 🔄 Fluxo de Deploy (Sync Waves)
+## Fluxo de deploy
 
 A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io/sync-wave`:
 
 - **Wave 0** → `Namespace`, `OperatorGroup`, `Subscription`.  
 - **Wave 1** → `ArgoCD CR` (instância do Argo CD).  
 
----
-
-## ✅ Boas práticas corporativas
+## Segurança
 
 - **Namespace dedicado**: `openshift-gitops`.  
 - **Subscription Approval**: `Automatic`.  
@@ -139,9 +125,7 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 > o cenário de bootstrap do cluster. Em ambientes compartilhados, substitua-o
 > por papéis mínimos compatíveis com os namespaces e recursos gerenciados.
 
----
-
-## 🔮 Próximos passos
+## Roadmap
 
 - [ ] Criar um `ArgoCD CR` customizado (HA, RBAC, Redis, Sharding).  
 - [x] Implementar **App of Apps** para bootstrap de workloads.
@@ -149,9 +133,7 @@ A ordem de aplicação dos manifests pode ser controlada com `argocd.argoproj.io
 - [ ] Integrar com **SealedSecrets** ou **External Secrets Operator** para gestão segura de segredos.  
 - [x] Configurar monitoramento básico do Argo CD com **Prometheus/Grafana**.
 
----
-
-## 📚 Referências
+## Referências
 
 - [OpenShift GitOps Documentation](https://docs.openshift.com/container-platform/latest/cicd/gitops/understanding-openshift-gitops.html)  
 - [Argo CD Official](https://argo-cd.readthedocs.io/en/stable/)  
