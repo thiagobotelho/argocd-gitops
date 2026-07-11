@@ -17,7 +17,7 @@ clone os repositórios e execute os comandos a partir dele.
 | OpenTelemetry Collector | Recebe OTLP das aplicações, envia traces ao Tempo e expõe métricas RED. |
 | Keycloak | Realm central `observability`, usuários, grupos, client OIDC do Grafana e client SAML do Zabbix. |
 | Grafana | Dashboards, datasources Prometheus/Loki/Tempo/Zabbix, autenticação via Keycloak e drilldown. |
-| Zabbix | Monitoramento sintético/API e integração com Grafana. |
+| Zabbix | Stack Zabbix com SAML via Keycloak e integração opcional com datasource do Grafana. |
 | Network Observability | Opcional; coleta fluxos de rede com eBPF e políticas do FlowCollector. |
 
 ## 2. Clonar os repositórios
@@ -64,11 +64,16 @@ Use recursos altos o bastante para a stack de observabilidade:
 
 ```bash
 crc config set enable-cluster-monitoring true
-crc config set cpus 8
-crc config set memory 32768
+crc config set cpus 10
+crc config set memory 40960
 crc stop
 crc start
 ```
+
+Para laboratórios menores, `8` CPUs e `32768` MiB funcionam melhor se as
+aplicações forem sincronizadas em ondas. Para a stack completa, especialmente
+com Loki, Tempo, Pyroscope, Grafana, Zabbix e Network Observability, prefira o
+perfil maior.
 
 Autentique o `oc`:
 
@@ -284,11 +289,17 @@ scripts/bootstrap-zabbix.sh
 
 O bootstrap cria ou atualiza:
 
-- usuário técnico `grafana-datasource`;
-- grupo `Grafana datasource readers`;
-- Secret `grafana/zabbix-datasource`;
 - SAML do Zabbix apontando para Keycloak;
-- hosts e web scenarios HTTP para OpenShift API, Argo CD, Keycloak, Grafana e Zabbix.
+- certificado IdP `zabbix/zabbix-saml-idp`;
+- JIT/SCIM do diretório SAML;
+- grupos/roles de SSO;
+- opcionalmente o usuário técnico `grafana-datasource`, o grupo `Grafana datasource readers`
+  e o Secret `grafana/zabbix-datasource`.
+
+O bootstrap do Zabbix não cria hosts, templates, macros Kubernetes, web
+scenarios ou inventário de monitoramento. Esses objetos ficam fora da automação
+principal para evitar renomear objetos padrão ou criar um desenho de
+monitoramento incompleto.
 
 Sem o Secret `grafana/zabbix-datasource`, o `GrafanaDatasource` do Zabbix pode
 ser criado pelo Operator, mas ficará sem credenciais para consultar a API do
