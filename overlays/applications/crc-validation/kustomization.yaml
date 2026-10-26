@@ -27,3 +27,9 @@ patches:
     kind: Application
     name: loki
   patch: '[{"op": "replace", "path": "/spec/source/targetRevision", "value": "codex/crc-remediation-20261026"}]'
+- target:
+    group: argoproj.io
+    version: v1alpha1
+    kind: Application
+    name: opentelemetry
+  patch: '[{"op": "replace", "path": "/spec/source/targetRevision", "value": "codex/crc-remediation-20261026"}]'
