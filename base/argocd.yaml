@@ -10,6 +10,51 @@ metadata:
   labels:
     argocd.argoproj.io/instance: argocd-cluster
 spec:
+  resourceHealthChecks:
+    - group: flows.netobserv.io
+      kind: FlowCollector
+      check: |
+        hs = {status = "Progressing", message = "Waiting for current status conditions"}
+        if obj.status == nil then return hs end
+        if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then return hs end
+        if obj.status.conditions == nil then return hs end
+        for _, c in ipairs(obj.status.conditions) do
+          if (c.type == "Degraded" and c.status == "True") or (c.type == "Ready" and c.status == "False") then
+            hs.status = "Degraded"
+            hs.message = c.message or c.reason or "Resource is not ready"
+            return hs
+          end
+        end
+        for _, c in ipairs(obj.status.conditions) do
+          if c.type == "Ready" and c.status == "True" then
+            hs.status = "Healthy"
+            hs.message = c.message or c.reason or "Ready"
+            return hs
+          end
+        end
+        return hs
+    - group: loki.grafana.com
+      kind: LokiStack
+      check: |
+        hs = {status = "Progressing", message = "Waiting for current status conditions"}
+        if obj.status == nil then return hs end
+        if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then return hs end
+        if obj.status.conditions == nil then return hs end
+        for _, c in ipairs(obj.status.conditions) do
+          if (c.type == "Degraded" and c.status == "True") or (c.type == "Ready" and c.status == "False") then
+            hs.status = "Degraded"
+            hs.message = c.message or c.reason or "Resource is not ready"
+            return hs
+          end
+        end
+        for _, c in ipairs(obj.status.conditions) do
+          if c.type == "Ready" and c.status == "True" then
+            hs.status = "Healthy"
+            hs.message = c.message or c.reason or "Ready"
+            return hs
+          end
+        end
+        return hs
   server:
     autoscale:
       enabled: false
