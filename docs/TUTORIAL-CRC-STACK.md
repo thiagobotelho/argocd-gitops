@@ -2,7 +2,7 @@
 
 ## 1. Objetivo e forma de execução
 
-Este guia instala e valida a stack em um CRC pessoal novo, explicando cada ação. Execute os blocos em ordem e cada comando separadamente, conferindo seu retorno, em **Bash ou Zsh**. Não há scripts Python embutidos, loops de instalação ou execução obrigatória de scripts de bootstrap. As interfaces administrativas são usadas nas configurações de identidade, com os campos descritos.
+Este guia instala e valida a stack em um CRC pessoal novo, explicando cada ação. Execute os blocos em ordem e cada comando separadamente, conferindo seu retorno, em **Bash ou Zsh**. Não há scripts Python embutidos nem loops de instalação. Os comandos de preparação são explícitos; na etapa 9, um script versionado e revisável automatiza certificado e IdP SAML. As interfaces administrativas continuam disponíveis para conferência e testes de identidade.
 
 O Argo CD continua responsável por reconciliar os manifests dos componentes. Isso é parte da arquitetura GitOps: os comandos manuais preparam suas dependências, cadastram as Applications e verificam o resultado.
 
@@ -596,76 +596,113 @@ oc -n openshift-gitops get application grafana
 
 O Job PostSync grafana-enable-zabbix-app-plugin já está declarado no overlay; confira sua conclusão na UI do Argo depois de completar as dependências da etapa 9.3. No Grafana, veja o plugin Zabbix instalado e habilitado. Não substitua esse teste por apenas abrir um dashboard.
 
-## 9. Configurar Zabbix SAML/JIT manualmente
+## 9. Configurar Zabbix SAML/JIT
 
-### 9.1 Preparar o certificado de assinatura do IdP
+### 9.1 Preparar o bootstrap automático de certificado e IdP
 
-**Objetivo:** permitir ao frontend validar assertions assinadas pelo Keycloak.
+**Objetivo:** reaproveitar `zabbix-gitops/scripts/bootstrap-zabbix.sh` para obter o certificado público correto do Keycloak, publicar `zabbix-saml-idp` e cadastrar/reconciliar o IdP/JIT pela API Zabbix. Não é necessário exportar o certificado pela UI nem repetir o cadastro manual do IdP.
 
-Na UI do Keycloak, abra **observability > Realm settings > Keys > Active keys**. Escolha o botão **Certificate** da linha com **Algorithm = RS256**, **Type = RSA**, **Use = SIG**, **Provider = rsa-generated**. Essa linha identifica o certificado público de assinatura no perfil deste repositório.
-
-| Opção na tela | Finalidade / escolha |
-| --- | --- |
-| RS256 / RSA / SIG / Certificate | Certificado de assinatura a usar na configuração SAML |
-| RS256 / Public key | Chave pública isolada; não substitui o certificado X.509 exigido aqui |
-| RSA-OAEP / RSA / ENC | Criptografia; não escolher para validar assinatura SAML |
-| HS512 / OCT ou AES / OCT | Não são o certificado RSA de assinatura |
-
-Se houver rotação ou múltiplos provedores de assinatura, confira qual certificado está anunciado no descritor SAML como `KeyDescriptor use="signing"`; não escolha por data de expiração ou posição na lista.
-
-Exporte/copie o certificado em formato PEM para `$WORKDIR/certificados/keycloak-saml-idp.crt`, com BEGIN CERTIFICATE e END CERTIFICATE. Não exporte chave privada e não use a CA de ingress nesse lugar. Confira a chave de assinatura anunciada em `$KEYCLOAK_URL/realms/observability/protocol/saml/descriptor` se houver mais de um certificado. Se o botão mostrar somente o conteúdo Base64, acrescente as linhas `-----BEGIN CERTIFICATE-----` e `-----END CERTIFICATE-----` ao salvar; se já estiver em PEM, preserve-o sem duplicar os delimitadores. Não copie uma chave privada.
+Atualize a cópia do repositório, preservando alterações locais:
 
 ```bash
-openssl x509 -in "$WORKDIR/certificados/keycloak-saml-idp.crt" -noout -subject -issuer -dates
-oc -n zabbix create configmap zabbix-saml-idp \
-  --from-file=idp.crt="$WORKDIR/certificados/keycloak-saml-idp.crt"
-oc -n zabbix rollout restart deployment/zabbix-web
+cd "$WORKDIR/zabbix-gitops"
+git status --short
+git pull --ff-only
+```
+
+Se houver alterações locais ou o pull falhar, resolva antes de executar. Confira as dependências e o código que será utilizado:
+
+```bash
+bash --version
+python3 --version
+curl --version
+jq --version
+openssl version
+oc whoami
+oc whoami --show-server
+less scripts/bootstrap-zabbix.sh
+less scripts/extract-saml-signing-cert.py
+oc -n zabbix get pods,route
+oc -n keycloak-dev get pods,route
+openssl x509 -in "$WORKDIR/certificados/ingress-ca.crt" -noout -subject -issuer -dates
+```
+
+**Esperado:** workloads prontos, contexto do CRC e CA HTTPS conferida na etapa 7.3. Python 3 usa somente biblioteca padrão para interpretar o XML; não há bloco Python para colar no terminal. O script é Bash e será chamado com `bash`, mesmo quando seu terminal for Zsh.
+
+Informe a senha atual do administrador **local do Zabbix**, normalmente `Admin`. Essa conta é diferente de `zabbix-admin` no Keycloak. Em uma instalação nova, consulte a [documentação do primeiro login](https://www.zabbix.com/documentation/7.4/en/manual/quickstart/login) e altere a senha inicial pela UI antes de automatizar. A senha do PostgreSQL não serve para esse acesso.
+
+```bash
+printf '%s' 'Senha atual do administrador local Admin do Zabbix: '
+IFS= read -r -s ZABBIX_ADMIN_PASSWORD
+printf '\n'
+test -n "$ZABBIX_ADMIN_PASSWORD"
+```
+
+Se o teste passou, configure o escopo:
+
+```bash
+export ZABBIX_ADMIN_PASSWORD
+export BOOTSTRAP_CA_FILE="$WORKDIR/certificados/ingress-ca.crt"
+export ZABBIX_ENABLE_SAML=true
+export ZABBIX_ENABLE_SAML_JIT=true
+export ZABBIX_MANAGE_SAML_IDP_CERT=true
+export ZABBIX_MANAGE_GRAFANA_DATASOURCE=false
+export ZABBIX_ENABLE_SAML_SCIM=false
+```
+
+**Motivo das opções:** a senha fica no ambiente do processo; a CA valida o HTTPS de Keycloak e Zabbix; certificado e IdP serão reconciliados; a conta técnica do Grafana continua na etapa 9.3; SCIM fica desabilitado. Não use `set -x` nem grave a senha em `.env`. Variáveis fornecidas no ambiente têm precedência sobre `.env` existente. Se o administrador local tiver outro nome, informe `ZABBIX_ADMIN_USER` explicitamente.
+
+O script descobre URLs pelas Routes. Revise eventuais URLs e opções de um `.env` antigo antes de executá-lo. O client `zabbix` e seus mappers devem existir no realm `observability`; o script não os cria no Keycloak.
+
+### 9.2 Executar e conferir certificado, IdP e JIT
+
+Execute o código versionado:
+
+```bash
+bash scripts/bootstrap-zabbix.sh
+```
+
+**Efeitos:** autentica na API, verifica o diretório SAML existente, consulta o metadata por HTTPS validado, seleciona o certificado RSA publicado como assinatura, atualiza o ConfigMap quando necessário e aguarda o rollout do frontend. Depois cria/reconcilia IdP, grupos e mapeamentos JIT e habilita SAML. Pode interromper sessões durante o rollout; mantenha acesso administrativo local. Não é uma transação única: em caso de falha, investigue a etapa antes de repetir.
+
+**Esperado:** mensagens de reconciliação SAML concluída, sem senha ou token na saída. Se o certificado for ambíguo, o EntityID divergir ou houver outro diretório SAML, o script interrompe para revisão. Em rotação, consulte a [seleção por fingerprint](https://github.com/thiagobotelho/zabbix-gitops#seleção-e-rotação-do-certificado-saml). Não contorne falhas TLS desabilitando a validação.
+
+Após sucesso, remova as variáveis da sessão:
+
+```bash
+unset ZABBIX_ADMIN_PASSWORD BOOTSTRAP_CA_FILE
+unset ZABBIX_ENABLE_SAML ZABBIX_ENABLE_SAML_JIT ZABBIX_MANAGE_SAML_IDP_CERT
+unset ZABBIX_MANAGE_GRAFANA_DATASOURCE ZABBIX_ENABLE_SAML_SCIM
+```
+
+Confira os recursos e o certificado público que foi publicado:
+
+```bash
+oc -n zabbix get configmap zabbix-saml-idp
+oc -n zabbix get configmap zabbix-saml-idp -o jsonpath='{.data.idp\.crt}' \
+  | openssl x509 -noout -subject -issuer -dates -fingerprint -sha256
 oc -n zabbix rollout status deployment/zabbix-web --timeout=5m
 ```
 
-**Esperado:** ConfigMap zabbix-saml-idp, chave idp.crt, montado em /etc/zabbix/web/certs/idp.crt. Esse objeto é ConfigMap, não Secret. Para rotação posterior, atualize-o de forma coordenada e reinicie o frontend após verificar o novo certificado.
+Na UI Zabbix, use o administrador local para **conferir**, sem cadastrar um segundo IdP, em Users > Authentication > SAML:
 
-### 9.2 Entrar como administrador local e cadastrar o IdP
-
-Consulte as Routes:
-
-```bash
-oc -n zabbix get route zabbix
-oc -n keycloak-dev get route keycloak
-```
-
-Abra o Zabbix. Em uma instalação nova padrão, o usuário inicial é Admin e a senha inicial documentada é zabbix; altere-a antes de continuar. Se o banco foi restaurado, use sua senha atual. Essa conta não é zabbix-admin do Keycloak. Preserve uma sessão local para recuperação.
-
-Em Users > User groups, crie Grafana datasource readers e Disabled provisioned users; deixe o segundo grupo desabilitado. Em Users > Authentication > SAML, configure a integração:
-
-| Campo | Valor a conferir |
-|---|---|
+| Campo | Valor esperado |
+| --- | --- |
 | IdP entity ID | URL Keycloak seguida de /realms/observability |
-| SSO e SLO | URL Keycloak seguida de /realms/observability/protocol/saml |
+| SSO/SLO | URL Keycloak seguida de /realms/observability/protocol/saml |
 | SP entity ID | zabbix |
-| Username attribute | username |
-| NameID format | urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress |
-| Validação de assertions assinadas | Habilitada |
-| Assinatura de requests/respostas pelo SP e criptografia | Não exigir sem provisionar o par de chave/certificado SP |
-| JIT provisioning | Habilitado |
-| Group name attribute | groups |
-| Nome e sobrenome | firstName e lastName |
-| Grupo para usuários desprovisionados | Disabled provisioned users |
+| Username / grupos / nome / sobrenome | username / groups / firstName / lastName |
+| Assertions assinadas / JIT | Habilitados |
+| SCIM | Desabilitado neste procedimento |
+| Grupo de desprovisionados | Disabled provisioned users, desabilitado |
 
-Confira no client zabbix do Keycloak o ACS: URL pública do Zabbix seguida de /index_sso.php?acs. O mapper groups desse client emite nomes sem o caminho completo.
+| Grupo Keycloak | Grupo Zabbix | Role |
+| --- | --- | --- |
+| zabbix-super-admins / zabbix-admins | Zabbix administrators | Super admin role |
+| zabbix-users / zabbix-guests | Grafana datasource readers | User role |
 
-Configure os mapeamentos JIT conforme a política declarada para os usuários do laboratório:
+Esses mapeamentos concedem os papéis indicados; revise antes de executar em outro ambiente. A reconciliação pode substituir mapeamentos personalizados do diretório. No Keycloak, confira o ACS do client `zabbix`: URL pública do Zabbix seguida de `/index_sso.php?acs`; o mapper `groups` emite nomes sem caminho completo.
 
-| Grupo do Keycloak | Grupo Zabbix | Role |
-|---|---|---|
-| zabbix-super-admins | Zabbix administrators | Super admin role |
-| zabbix-admins | Zabbix administrators | Super admin role |
-| zabbix-users | Grafana datasource readers | User role |
-| zabbix-guests | Grafana datasource readers | User role |
-
-O mapeamento administrativo concede privilégios altos; use contas próprias de laboratório. SCIM é independente de JIT: mantenha-o desativado se não estiver configurando cliente, autenticação e testes de provisionamento SCIM. Não declare SCIM validado por habilitar uma opção. Veja a [configuração SAML do Zabbix](https://www.zabbix.com/documentation/7.4/en/manual/web_interface/frontend_sections/users/authentication/saml).
-
-**Esperado:** login SAML de zabbix-admin funciona e o usuário recebe o grupo/role previsto. Teste logout e um usuário sem grupo permitido. JIT pode criar usuários no primeiro login; observe os objetos criados antes de atribuir PASS.
+**Validação funcional:** teste `zabbix-admin` em janela privada, confira grupo/role, logout e um usuário sem mapeamento. JIT pode criar usuários no login; a conclusão do script não comprova autenticação SAML nem consulta de dados. Preserve o administrador local para recuperação.
 
 ### 9.3 Criar o usuário técnico do datasource
 
