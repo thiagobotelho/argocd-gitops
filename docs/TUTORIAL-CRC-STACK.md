@@ -2,7 +2,7 @@
 
 ## 1. Objetivo e forma de execução
 
-Este guia instala e valida a stack em um CRC pessoal novo, explicando cada ação. Execute os blocos em ordem e cada comando separadamente, conferindo seu retorno, em **Bash**. Não há scripts Python embutidos, loops de instalação ou execução obrigatória de scripts de bootstrap. As interfaces administrativas são usadas nas configurações de identidade, com os campos descritos.
+Este guia instala e valida a stack em um CRC pessoal novo, explicando cada ação. Execute os blocos em ordem e cada comando separadamente, conferindo seu retorno, em **Bash ou Zsh**. Não há scripts Python embutidos, loops de instalação ou execução obrigatória de scripts de bootstrap. As interfaces administrativas são usadas nas configurações de identidade, com os campos descritos.
 
 O Argo CD continua responsável por reconciliar os manifests dos componentes. Isso é parte da arquitetura GitOps: os comandos manuais preparam suas dependências, cadastram as Applications e verificam o resultado.
 
@@ -30,7 +30,7 @@ O Argo CD continua responsável por reconciliar os manifests dos componentes. Is
 **Objetivo:** confirmar as ferramentas antes de alterar o ambiente.
 
 ```bash
-bash --version
+printf 'Bash: %s | Zsh: %s\n' "${BASH_VERSION:-não ativo}" "${ZSH_VERSION:-não ativo}"
 git --version
 crc version
 openssl version
@@ -40,6 +40,12 @@ curl --version
 **Esperado:** ferramentas disponíveis. O oc será disponibilizado pelo próprio CRC depois do start. O perfil recomendado pelo projeto para a stack completa é 10 vCPUs, 40 GiB de RAM e disco de 200 GiB para a VM; reserve recursos adicionais para o host. Isso não é o mínimo oficial do CRC nem garantia de capacidade para qualquer carga.
 
 Execute crc no host que administra a VM, sem sudo crc. Se ela pertence ao Windows, faça seu ciclo de vida nesse host; configure posteriormente o acesso a partir do WSL. Ter oc no WSL não significa ter uma segunda VM CRC.
+
+Os blocos usam a sintaxe comum aos dois shells. Não é necessário abrir outro shell. Use o mesmo terminal para ler uma variável e criar o Secret que a consome; abrir bash ou zsh depois da leitura não transfere automaticamente essas variáveis.
+
+Nos prompts, o texto mostrado é apenas a pergunta: digite a senha quando a leitura aguardar. Não substitua a pergunta pela própria senha. A senha digitada com read -s não aparece no terminal. Não cole outros comandos enquanto o prompt estiver aguardando.
+
+O formato usado em todo o guia é printf para exibir a pergunta, seguido de IFS= read -r -s VARIAVEL para leitura silenciosa. IFS= preserva espaços e -r preserva barras invertidas. Não use read -p nesses blocos: no Bash é opção de prompt; no Zsh refere-se a coprocessos. Para endereços e nomes de recursos, a leitura usa read -r, sem -s, para permitir conferir o texto.
 
 ### 2.2 Escolher um diretório novo
 
@@ -231,18 +237,29 @@ oc -n keycloak-dev get secret keycloak-observability-users --ignore-not-found
 Se estiver ausente:
 
 ```bash
-read -r -s -p 'Senha inicial de grafana-admin: ' GRAFANA_ADMIN_PASSWORD
+printf '%s' 'Senha inicial de grafana-admin: '
+IFS= read -r -s GRAFANA_ADMIN_PASSWORD
 printf '\n'
-read -r -s -p 'Senha inicial de zabbix-admin: ' ZABBIX_ADMIN_PASSWORD
+printf '%s' 'Senha inicial de zabbix-admin: '
+IFS= read -r -s ZABBIX_ADMIN_PASSWORD
 printf '\n'
-read -r -s -p 'Senha inicial de observability-admin: ' OBSERVABILITY_ADMIN_PASSWORD
+printf '%s' 'Senha inicial de observability-admin: '
+IFS= read -r -s OBSERVABILITY_ADMIN_PASSWORD
 printf '\n'
 test -n "$GRAFANA_ADMIN_PASSWORD"
 test -n "$ZABBIX_ADMIN_PASSWORD"
 test -n "$OBSERVABILITY_ADMIN_PASSWORD"
 ```
 
-**Esperado:** os três test retornam sucesso. Se algum falhar, não execute a criação: leia novamente a senha correspondente.
+Cada test verifica apenas se a variável tem conteúdo e não imprime a senha. Se algum falhar, não execute a criação: leia novamente a senha correspondente. Para receber uma confirmação visível sem revelar os valores:
+
+```bash
+test -n "$GRAFANA_ADMIN_PASSWORD" && printf 'Grafana: preenchida\n'
+test -n "$ZABBIX_ADMIN_PASSWORD" && printf 'Zabbix: preenchida\n'
+test -n "$OBSERVABILITY_ADMIN_PASSWORD" && printf 'Observability: preenchida\n'
+```
+
+**Esperado:** as três confirmações aparecem. Caso contrário, pare antes de criar o Secret.
 
 ```bash
 oc -n keycloak-dev create secret generic keycloak-observability-users \
@@ -431,7 +448,8 @@ oc -n grafana get secret grafana-oauth --ignore-not-found
 Se ainda não existe:
 
 ```bash
-read -r -s -p 'Client secret do client grafana: ' GRAFANA_CLIENT_SECRET
+printf '%s' 'Client secret do client grafana: '
+IFS= read -r -s GRAFANA_CLIENT_SECRET
 printf '\n'
 test -n "$GRAFANA_CLIENT_SECRET"
 ```
@@ -538,7 +556,8 @@ oc -n grafana get secret zabbix-datasource --ignore-not-found
 Se estiver ausente:
 
 ```bash
-read -r -s -p 'Senha do usuário técnico grafana-datasource: ' ZABBIX_DATASOURCE_PASSWORD
+printf '%s' 'Senha do usuário técnico grafana-datasource: '
+IFS= read -r -s ZABBIX_DATASOURCE_PASSWORD
 printf '\n'
 test -n "$ZABBIX_DATASOURCE_PASSWORD"
 ```
@@ -576,7 +595,8 @@ oc -n openshift-config get secret keycloak-openshift-client-secret --ignore-not-
 Se ainda não existe:
 
 ```bash
-read -r -s -p 'Client secret do client openshift: ' OPENSHIFT_CLIENT_SECRET
+printf '%s' 'Client secret do client openshift: '
+IFS= read -r -s OPENSHIFT_CLIENT_SECRET
 printf '\n'
 test -n "$OPENSHIFT_CLIENT_SECRET"
 ```
@@ -680,7 +700,8 @@ oc -n validacao-metallb get service web
 A imagem de teste está fixada por digest para preservar a referência. A existência no registro não comprova execução no seu cluster; confira eventos e compatibilidade com a SCC se o rollout falhar. **Esperado:** EXTERNAL-IP dentro do pool. Copie o endereço atribuído para o comando de acesso:
 
 ```bash
-read -r -p 'EXTERNAL-IP atribuído ao Service web: ' METALLB_TEST_IP
+printf '%s' 'EXTERNAL-IP atribuído ao Service web: '
+IFS= read -r METALLB_TEST_IP
 curl --fail --show-error --connect-timeout 5 "http://$METALLB_TEST_IP:8080/"
 ```
 
@@ -760,7 +781,8 @@ oc -n openshift-operators get installplan,csv
 **Objetivo:** conferir qual plano pertence à Subscription e qual CSV instalará. A Subscription usa aprovação Manual. Depois de identificar o nome exato:
 
 ```bash
-read -r -p 'Nome do InstallPlan conferido para Service Mesh: ' MESH_INSTALLPLAN
+printf '%s' 'Nome do InstallPlan conferido para Service Mesh: '
+IFS= read -r MESH_INSTALLPLAN
 oc -n openshift-operators get installplan "$MESH_INSTALLPLAN" -o yaml
 ```
 
@@ -831,3 +853,6 @@ Use PASS, FAIL, BLOCKED e NOT RUN com resultado esperado, observado e próximo a
 - [Endpoints OIDC do Keycloak](https://www.keycloak.org/securing-apps/oidc-layers).
 - [Primeiro login Zabbix](https://www.zabbix.com/documentation/7.4/en/manual/quickstart/login) e [SAML](https://www.zabbix.com/documentation/7.4/en/manual/web_interface/frontend_sections/users/authentication/saml).
 - [Operação desta stack](OPERACAO.md) e [autenticação OpenShift/Keycloak](AUTENTICACAO-KEYCLOAK-CRC.md).
+
+
+Compatibilidade de shell: [read do Zsh](https://zsh.sourceforge.io/Doc/Release/Shell-Builtin-Commands.html#index-read) e [builtins do Bash](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html). A sintaxe comum dos prompts não exige mudar seu shell padrão.
