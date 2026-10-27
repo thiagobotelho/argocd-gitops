@@ -23,3 +23,13 @@ with tempfile.TemporaryDirectory() as td:
    path.write_text('obj='+obj+'\nlocal check=function()\n'+check['check']+'\nend\nlocal hs=check()\nassert(hs.status=="'+expected+'", hs.status)\n')
    subprocess.run(['luajit',str(path)],check=True)
 print('PASS: 23 casos de saúde Sail executados com LuaJIT')
+
+rendered=[d for d in yaml.safe_load_all(subprocess.check_output(['kubectl','kustomize',str(root/'optional/service-mesh')],text=True)) if d]
+assert len(rendered)==1
+app=rendered[0]
+assert app['kind']=='Application' and app['metadata']['name']=='service-mesh'
+assert not app['metadata'].get('finalizers')
+assert app['spec']['source']['path']=='overlays/desenvolvimento'
+assert app['spec']['source']['repoURL']=='https://github.com/thiagobotelho/service-mesh-gitops.git'
+assert not app['spec']['syncPolicy'].get('automated')
+print('PASS: uma Application manual de infraestrutura, sem exclusão em cascata ou APIs')

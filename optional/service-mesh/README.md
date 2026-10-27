@@ -1,17 +1,24 @@
-# Infraestrutura opcional de Service Mesh
+# Service Mesh no Argo CD
 
-Este módulo cadastra três Applications com sincronização manual:
+A Application `service-mesh` gerencia o Operator, os namespaces de infraestrutura, IstioCNI, Istio, a tag de revisão e os monitores. A fonte é `service-mesh-gitops/overlays/desenvolvimento`. As APIs e políticas dos exercícios permanecem manuais no repositório `mesh-apps-lab`.
 
-- service-mesh-operator: Subscription do Operator.
-- service-mesh-control-plane: Istio, IstioCNI, tag e namespaces de infraestrutura.
-- service-mesh-monitoring: monitores para o Prometheus existente.
+## Instalação
+
+Configure previamente as verificações de saúde Sail entregues por `base/argocd.yaml` e instale as CRDs do monitoramento. Confira compatibilidade do catálogo e capacidade do cluster antes de cadastrar:
 
 ```bash
 oc apply -k optional/service-mesh
 ```
 
-Sincronize o Operator, revise e aprove o InstallPlan específico, aguarde CSV/CRDs, depois sincronize o plano de controle. Instale o monitoramento após conferir namespaces e seletores. Sync waves entre Applications independentes não substituem esses pré-requisitos.
+Sincronize `service-mesh` pelo Argo CD. As waves ordenam namespaces, Subscription, CNI, Istio, tag e monitores. A saúde da Subscription deve permanecer Progressing enquanto a instalação inicial aguarda aprovação. Inspecione e aprove somente o InstallPlan da versão escolhida; aguarde CSV Succeeded e CRDs Established. `SkipDryRunOnMissingResource` evita falha de dry-run das CRDs Sail ainda ausentes e não substitui a instalação do Operator.
 
-As APIs e políticas dos exercícios não são gerenciadas por este módulo. Use o repositório [mesh-apps-lab](https://github.com/thiagobotelho/mesh-apps-lab) manualmente. Nenhuma Application deve apontar para seus cenários.
+A sincronização é manual e a Application não possui finalizer de exclusão em cascata. Consulte os guias de instalação e operação do repositório `service-mesh-gitops`.
 
-Tracing: optional/tracing substitui a fonte do mesmo Application de plano de controle; não crie dois proprietários do Istio. Consulte o [guia de instalação](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/INSTALACAO-CRC.md).
+## Migrar de Applications separadas
+
+1. Confira que `service-mesh-operator`, `service-mesh-control-plane` e `service-mesh-monitoring` não têm operações em andamento, sincronização automática ou finalizers. Salve seus manifests e inventário dos recursos.
+2. Retire somente esses três objetos Application sem cascata. Não exclua os manifests de infraestrutura com `oc delete -k` e não remova finalizers sem revisar sua finalidade.
+3. Cadastre `service-mesh`, confira o diff e sincronize inicialmente sem prune. Os recursos existentes são reconciliados com a nova identificação de propriedade, sem reinstalar o Operator ou recriar namespaces.
+4. Confirme Synced/Healthy, a revisão ativa, CNI, tag, monitores e preservação das APIs. Não mantenha duas Applications gerenciando os mesmos recursos.
+
+Para reverter a migração, retire `service-mesh` sem cascata e recadastre as três definições anteriores a partir da revisão Git salva. Confira propriedade e diff antes de sincronizar, sem prune.
