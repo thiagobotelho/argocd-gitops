@@ -135,7 +135,15 @@ oc whoami --show-server
 oc get nodes
 ```
 
-Digite a senha no prompt. Consulte as credenciais do CRC somente no terminal local; não registre essa saída no relatório. O kubeconfig contém credenciais: mantenha-o fora dos repositórios e de anexos. Em outro terminal, reconfigure WORKDIR e KUBECONFIG antes de usar oc.
+Digite a senha no prompt. Para consultar a senha do `kubeadmin`, execute **no host que administra a VM CRC**, em terminal privado:
+
+```bash
+crc console --credentials
+```
+
+**Objetivo:** mostrar as credenciais locais do CRC; a saída contém senhas e não deve ser compartilhada. Se o CRC está no Windows, execute o comando no Windows; depois use a senha no prompt do `oc login` no WSL. Não passe a senha em `--password` nem a coloque no histórico.
+
+O `kubeadmin` é usado aqui para administração do OpenShift pelo terminal. A interface do Argo CD usará seu usuário local `admin`, descrito na etapa 5.3. O kubeconfig contém credenciais: mantenha-o fora dos repositórios e de anexos. Em outro terminal, reconfigure WORKDIR e KUBECONFIG antes de usar oc.
 
 **Esperado:** servidor do CRC, identidade administrativa e nó Ready. Não prossiga se aparecer outro cluster.
 
@@ -343,38 +351,42 @@ oc -n openshift-gitops get pods,route
 
 **Esperado:** servidor disponível e Route criada. Não use oc apply -k overlays/cluster como primeira chamada de um cluster vazio, pois mistura fases que dependem da CRD.
 
-### 5.3 Validar o acesso às fontes Git e imagens
+### 5.3 Consultar o acesso administrativo local do Argo CD
+
+**Objetivo:** entrar na interface com o usuário local `admin`, sem conceder permissões extras ao `kubeadmin` no RBAC do Argo.
+
+Consulte o endereço:
+
+```bash
+oc -n openshift-gitops get route openshift-gitops-server \
+  -o jsonpath='{.spec.host}{"\n"}'
+```
+
+Abra o endereço com `https://`. Para obter a senha do usuário **admin**, execute somente no seu terminal privado:
+
+```bash
+oc -n openshift-gitops get secret openshift-gitops-cluster \
+  -o jsonpath='{.data.admin\.password}' | base64 --decode
+printf '\n'
+```
+
+**Esperado:** o valor local da chave `admin.password`. A saída contém a senha: não cole no chat, em relatórios, em capturas ou no Git. Não execute com gravação de terminal ou `set -x` habilitado.
+
+Na página do Argo, use o formulário de usuário e senha: **Username = admin**, **Password = valor consultado**. Não escolha o botão de login pelo OpenShift para esse procedimento. Depois do login, confira o usuário em **User Info**.
+
+O Secret depende do nome da instância; neste repositório a ArgoCD CR chama-se `openshift-gitops`. Se a senha já foi alterada pela interface, use a credencial atual: não suponha que o Secret ainda corresponda à senha em uso. Se o administrador local estiver desabilitado por uma configuração personalizada, revise essa decisão em vez de alterar RBAC de outros usuários como atalho.
+
+As credenciais do Argo são diferentes das do OpenShift e do Keycloak. O RBAC SSO continua com `role:readonly` como padrão e somente os grupos administrativos explicitamente configurados. Não é necessário acrescentar uma regra para o `kubeadmin` para seguir este tutorial.
+
+### 5.4 Validar o acesso às fontes Git e imagens
 
 **Objetivo:** resolver autenticação antes de culpar Kustomize ou o Operator.
 
-Abra a Route do Argo, escolha login pelo OpenShift e autentique a sessão administrativa. Em Settings > Repositories, cadastre cada fonte privada exigida pelas Applications e confirme conexão bem-sucedida. Use credencial nova de leitura restrita aos projetos; não coloque token no repoURL ou no Git. Fontes públicas acessíveis não exigem credencial privada.
+Com a sessão local `admin` do Argo, abra **Settings > Repositories**, cadastre cada fonte privada exigida pelas Applications e confirme conexão bem-sucedida. Use credencial nova de leitura restrita aos projetos; não coloque token no repoURL ou no Git. Fontes públicas acessíveis não exigem credencial privada.
 
 Confira também as imagens referenciadas nos overlays. Se alguma imagem for privada, crie o pull secret no namespace consumidor e vincule-o à ServiceAccount correspondente antes de iniciar o workload. Credenciais Git não autenticam pulls no Quay. ImagePullBackOff exige conferir a imagem, sua existência e a autenticação; não trocar a tag às cegas.
 
-### 5.4 Conferir a autorização do kubeadmin no Argo CD
-
-**Objetivo:** permitir somente a sincronização de `default/grafana` à conta de bootstrap do CRC. Administração no OpenShift não concede automaticamente administração na interface do Argo CD. O acesso padrão continua somente leitura.
-
-Depois de a CRD e a instância existirem, aplique a configuração de bootstrap:
-
-```bash
-oc kustomize overlays/cluster
-oc apply -k overlays/cluster
-oc -n openshift-gitops get configmap argocd-rbac-cm \
-  -o jsonpath='{.data.policy\.csv}{"\n"}{.data.scopes}{"\n"}'
-```
-
-**Esperado:** depois da reconciliação do operador, a política contém `p, kubeadmin, applications, sync, default/grafana, allow` e scopes `[groups, email]`. A regra está em `overlays/cluster/rbac-grafana-bootstrap.yaml`. Revise customizações antes de aplicar; esse overlay define o RBAC do bootstrap deste repositório.
-
-O conector OpenShift do Dex envia o nome do usuário no campo `email`; ele precisa ser considerado pelo RBAC além de `groups`. O identificador interno `sub` pode ser um UID e não deve ser fixado no Git. Esse desenho é para laboratório com o conector OpenShift. Para ambientes compartilhados ou outros IdPs, use identidades e grupos explicitamente autorizados.
-
-Saia do Argo CD e entre novamente pelo OpenShift para renovar a sessão. Ao retomar uma sincronização que esgotou tentativas, use **Sync completo**: Refresh apenas recalcula a comparação. A regra não concede ao kubeadmin permissão adicional para excluir aplicações ou sincronizar outros componentes.
-
-Quando a instância já for gerenciada pela Application `argocd-cluster`, atualize o arquivo no Git e deixe essa Application reconciliar a mudança. Alterações somente no CR podem ser revertidas pelo selfHeal; não edite diretamente o ConfigMap gerenciado pelo operador.
-
-Para reverter, remova somente a linha de permissão adicionada e restaure `scopes: '[groups]'` se nenhuma outra regra depender de `email`. Mantenha grupos e regras personalizados. Confirme a propagação e renove a sessão. A reversão dessa permissão não remove aplicações ou dados.
-
-Referências: [RBAC do Argo CD](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/) e [conector OpenShift do Dex](https://github.com/dexidp/dex/blob/master/connector/openshift/openshift.go).
+Referência: [acesso à instância padrão do OpenShift GitOps](https://docs.redhat.com/en/documentation/red_hat_openshift_gitops/1.20/html/installing_gitops/installing-openshift-gitops).
 
 ## 6. Iniciar a stack base pelo App-of-Apps
 
@@ -476,7 +488,43 @@ oc -n keycloak-dev wait --for=condition=Complete job/keycloak-config-cli-observa
 
 **Esperado:** realm observability, usuários grafana-admin, zabbix-admin e observability-admin; clients grafana, zabbix e openshift. Confira também os grupos de cada usuário. Um Job Complete não substitui a conferência da configuração importada.
 
-### 7.2 Obter a CA do ingress deste CRC
+### 7.2 Consultar o administrador inicial do Keycloak
+
+**Objetivo:** acessar o console administrativo do Keycloak para configurar clients, certificados e usuários do realm `observability`.
+
+Consulte o endereço público:
+
+```bash
+oc -n keycloak-dev get route keycloak -o jsonpath='{.spec.host}{"\n"}'
+```
+
+Abra `https://<host-da-route>/admin/`. O operador gera o Secret inicial com o nome da Keycloak CR seguido de `-initial-admin`. Neste repositório: **keycloak-dev-initial-admin**, no namespace **keycloak-dev**.
+
+Consulte o nome do administrador inicial no seu terminal privado:
+
+```bash
+oc -n keycloak-dev get secret keycloak-dev-initial-admin \
+  -o jsonpath='{.data.username}' | base64 --decode
+printf '\n'
+```
+
+Depois consulte a senha no mesmo terminal:
+
+```bash
+oc -n keycloak-dev get secret keycloak-dev-initial-admin \
+  -o jsonpath='{.data.password}' | base64 --decode
+printf '\n'
+```
+
+**Esperado:** as duas credenciais de bootstrap. Não presuma que o nome seja `admin`: use o valor de `username`. A saída da segunda consulta contém a senha; não a publique nem a salve em relatório.
+
+Entre no console administrativo e selecione o realm **observability** para as próximas etapas. A conta administrativa inicial pertence ao realm **master** e é diferente dos usuários `grafana-admin`, `zabbix-admin` e `observability-admin`.
+
+A conta inicial é de bootstrap e pode ser temporária conforme a versão. Se já foi removida ou sua senha mudou, use o administrador permanente existente. Não recrie usuários, apague o banco ou reaplique Secrets para tentar restaurar a senha. Configure um administrador permanente para operação e siga o procedimento oficial de recuperação quando necessário.
+
+Referências: [acesso inicial pelo Operator](https://www.keycloak.org/operator/basic-deployment) e [contas de bootstrap e recuperação](https://www.keycloak.org/server/bootstrap-admin-recovery).
+
+### 7.3 Obter a CA do ingress deste CRC
 
 **Objetivo:** consultar HTTPS validando a cadeia e o hostname, sem curl -k.
 
@@ -554,7 +602,18 @@ O Job PostSync grafana-enable-zabbix-app-plugin já está declarado no overlay; 
 
 **Objetivo:** permitir ao frontend validar assertions assinadas pelo Keycloak.
 
-Na UI do Keycloak, realm observability > Realm settings > Keys, identifique o certificado público ativo de assinatura RSA usado pelo SAML. Exporte/copie o certificado em formato PEM para `$WORKDIR/certificados/keycloak-saml-idp.crt`, com BEGIN CERTIFICATE e END CERTIFICATE. Não exporte chave privada e não use a CA de ingress nesse lugar. Confira a chave de assinatura anunciada em `$KEYCLOAK_URL/realms/observability/protocol/saml/descriptor` se houver mais de um certificado.
+Na UI do Keycloak, abra **observability > Realm settings > Keys > Active keys**. Escolha o botão **Certificate** da linha com **Algorithm = RS256**, **Type = RSA**, **Use = SIG**, **Provider = rsa-generated**. Essa linha identifica o certificado público de assinatura no perfil deste repositório.
+
+| Opção na tela | Finalidade / escolha |
+| --- | --- |
+| RS256 / RSA / SIG / Certificate | Certificado de assinatura a usar na configuração SAML |
+| RS256 / Public key | Chave pública isolada; não substitui o certificado X.509 exigido aqui |
+| RSA-OAEP / RSA / ENC | Criptografia; não escolher para validar assinatura SAML |
+| HS512 / OCT ou AES / OCT | Não são o certificado RSA de assinatura |
+
+Se houver rotação ou múltiplos provedores de assinatura, confira qual certificado está anunciado no descritor SAML como `KeyDescriptor use="signing"`; não escolha por data de expiração ou posição na lista.
+
+Exporte/copie o certificado em formato PEM para `$WORKDIR/certificados/keycloak-saml-idp.crt`, com BEGIN CERTIFICATE e END CERTIFICATE. Não exporte chave privada e não use a CA de ingress nesse lugar. Confira a chave de assinatura anunciada em `$KEYCLOAK_URL/realms/observability/protocol/saml/descriptor` se houver mais de um certificado. Se o botão mostrar somente o conteúdo Base64, acrescente as linhas `-----BEGIN CERTIFICATE-----` e `-----END CERTIFICATE-----` ao salvar; se já estiver em PEM, preserve-o sem duplicar os delimitadores. Não copie uma chave privada.
 
 ```bash
 openssl x509 -in "$WORKDIR/certificados/keycloak-saml-idp.crt" -noout -subject -issuer -dates
@@ -680,7 +739,7 @@ oc -n openshift-config create configmap keycloak-issuer-ca \
   --from-file=ca.crt="$WORKDIR/certificados/ingress-ca.crt"
 ```
 
-A CA deve corresponder ao issuer conferido na etapa 7.2. A existência do Secret não comprova que seu valor coincide com o client.
+A CA deve corresponder ao issuer conferido na etapa 7.3. A existência do Secret não comprova que seu valor coincide com o client.
 
 ### 10.2 Acrescentar o provedor sem apagar os existentes
 
