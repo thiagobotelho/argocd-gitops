@@ -64,6 +64,13 @@ spec:
         if obj.status.state == "Healthy" then
           return {status = "Healthy", message = "Recurso do Mesh saudável"}
         end
+        if obj.kind == "IstioRevisionTag" and obj.status.state == "NotReferencedByAnything" and obj.status.istioRevision ~= nil and obj.status.istioRevision ~= "" then
+          for _, c in ipairs(obj.status.conditions or {}) do
+            if c.type == "Reconciled" and c.status == "True" then
+              return {status = "Healthy", message = "Tag reconciliada, sem clientes ativos"}
+            end
+          end
+        end
         for _, c in ipairs(obj.status.conditions or {}) do
           if c.type == "Reconciled" and c.status == "False" then
             return {status = "Degraded", message = c.message or c.reason or "Falha de reconciliação"}
@@ -82,6 +89,13 @@ spec:
         if obj.status.state == "Healthy" then
           return {status = "Healthy", message = "Recurso do Mesh saudável"}
         end
+        if obj.kind == "IstioRevisionTag" and obj.status.state == "NotReferencedByAnything" and obj.status.istioRevision ~= nil and obj.status.istioRevision ~= "" then
+          for _, c in ipairs(obj.status.conditions or {}) do
+            if c.type == "Reconciled" and c.status == "True" then
+              return {status = "Healthy", message = "Tag reconciliada, sem clientes ativos"}
+            end
+          end
+        end
         for _, c in ipairs(obj.status.conditions or {}) do
           if c.type == "Reconciled" and c.status == "False" then
             return {status = "Degraded", message = c.message or c.reason or "Falha de reconciliação"}
@@ -99,6 +113,13 @@ spec:
         if obj.status.observedGeneration ~= nil and obj.metadata.generation ~= nil and obj.status.observedGeneration < obj.metadata.generation then return hs end
         if obj.status.state == "Healthy" then
           return {status = "Healthy", message = "Recurso do Mesh saudável"}
+        end
+        if obj.kind == "IstioRevisionTag" and obj.status.state == "NotReferencedByAnything" and obj.status.istioRevision ~= nil and obj.status.istioRevision ~= "" then
+          for _, c in ipairs(obj.status.conditions or {}) do
+            if c.type == "Reconciled" and c.status == "True" then
+              return {status = "Healthy", message = "Tag reconciliada, sem clientes ativos"}
+            end
+          end
         end
         for _, c in ipairs(obj.status.conditions or {}) do
           if c.type == "Reconciled" and c.status == "False" then
