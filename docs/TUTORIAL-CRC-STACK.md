@@ -386,7 +386,58 @@ oc -n openshift-gitops get application grafana -o jsonpath='{.status.operationSt
 oc -n grafana get pods,pvc,events
 ```
 
-**Objetivo:** distinguir credencial ausente, erro Git, CRD inexistente, falta de recurso e falha do container. Substitua grafana pelo app/namespace que está investigando. Não use redirecionamento de erros seguido de true para fazer a etapa parecer concluída.
+**Objetivo:** distinguir credencial ausente, erro Git, CRD inexistente, falta de recurso e falha do container. Substitua grafana pelo app/namespace que está investigando. Não use redirecionamento de erros seguido de true para fazer a etapa parecer concluída. Para erro no matches for kind GrafanaDashboard/GrafanaFolder em instalação nova, confira as CRDs e a instalação do Operator:
+
+```bash
+oc get crd grafanas.grafana.integreatly.org grafanafolders.grafana.integreatly.org grafanadashboards.grafana.integreatly.org
+oc -n grafana-operator get subscription,installplan,csv,pods
+```
+
+As CRs devem vir depois da Subscription: o perfil usa Operator na wave 2, instância na 10, pastas na 35 e dashboards na 40. SkipDryRunOnMissingResource não cria a CRD nem torna segura uma ordem invertida. Confira a revisão do repositório e corrija a ordem no Git; depois atualize o diff e dispare novo Sync no Argo quando a operação anterior falhou. Uma CRD já presente deve ter condição Established antes de depender dela.
+
+
+### 6.4 Construir as imagens locais do MinIO e do cliente mc
+
+**Objetivo:** produzir as imagens usadas pelo overlay CRC. Ele declara BuildConfigs minio-crc e mc-crc, mas não inicia builds por trigger automático. Um CRC novo não contém as imagens do registro interno de uma instalação anterior. manifest unknown nesse endereço não é resolvido apenas aguardando o pod.
+
+Confira os objetos e a saúde do registro:
+
+```bash
+oc -n openshift-logging get buildconfig,build,imagestream
+oc get clusteroperator image-registry
+oc -n openshift-image-registry get pods
+```
+
+**Esperado antes de iniciar:** BuildConfigs minio-crc e mc-crc existentes e registro disponível. Se os objetos ainda não existem, consulte o sync de loki; não crie uma BuildConfig diferente como atalho. Se já existe um build Pending ou Running, acompanhe esse build, sem iniciar uma duplicata. Se já terminou em Complete e sua tag está publicada, não é necessário reconstruir.
+
+Quando não houver build ativo nem imagem produzida, inicie primeiro o servidor:
+
+```bash
+oc -n openshift-logging start-build minio-crc --follow
+oc -n openshift-logging get builds
+oc -n openshift-logging get imagestreamtag minio-crc:RELEASE.2025-09-07T16-13-09Z
+```
+
+**Esperado:** build Complete e ImageStreamTag com imagem publicada. Não avance ao próximo build se o primeiro falhar. start-build executa compilação no cluster e pode consumir os recursos declarados na BuildConfig; acompanhe logs e eventos, sem disparar vários builds para tentar acelerar.
+
+Depois construa o cliente usado pelo Job de criação de bucket:
+
+```bash
+oc -n openshift-logging start-build mc-crc --follow
+oc -n openshift-logging get builds
+oc -n openshift-logging get imagestreamtag mc-crc:RELEASE.2025-08-13T08-35-41Z
+```
+
+**Esperado:** segundo build Complete e tag publicada. Se houver falha, consulte o build pelo nome mostrado em get builds e seus logs; não troque imagens ou remova PVCs como correção genérica.
+
+O kubelet tentará puxar novamente a imagem após o backoff. Acompanhe:
+
+```bash
+oc -n openshift-logging rollout status deployment/minio --timeout=10m
+oc -n openshift-logging get jobs,pods
+```
+
+**Esperado:** MinIO pronto e Job de bucket concluído; depois o sync pode avançar para LokiStack. A criação das BuildConfigs pelo Argo e a execução dos builds são ações distintas. Preserve o PVC minio-data, que não precisa ser recriado por uma falha de imagem. Veja [operações de build do OpenShift](https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/builds_using_buildconfig/basic-build-operations).
 
 ## 7. Validar Keycloak e preparar confiança TLS
 
