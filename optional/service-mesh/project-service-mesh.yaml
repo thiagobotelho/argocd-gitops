@@ -1,0 +1,38 @@
+# Limita a origem Git, os namespaces e os tipos aceitos pela Application.
+# Não substitui as permissões Kubernetes da ServiceAccount do controlador.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: service-mesh
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  namespace: openshift-gitops
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  description: Infraestrutura do Service Mesh sem workloads dos exercícios
+  sourceRepos:
+  - https://github.com/thiagobotelho/service-mesh-gitops.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: openshift-operators
+  - server: https://kubernetes.default.svc
+    namespace: istio-system
+  - server: https://kubernetes.default.svc
+    namespace: istio-cni
+  clusterResourceWhitelist:
+  - group: ""
+    kind: Namespace
+  - group: sailoperator.io
+    kind: Istio
+  - group: sailoperator.io
+    kind: IstioCNI
+  - group: sailoperator.io
+    kind: IstioRevisionTag
+  namespaceResourceWhitelist:
+  - group: operators.coreos.com
+    kind: Subscription
+  - group: monitoring.rhobs
+    kind: PodMonitor
+  - group: monitoring.rhobs
+    kind: ServiceMonitor

@@ -1,6 +1,6 @@
 # Service Mesh no Argo CD
 
-A Application `service-mesh` gerencia o Operator, os namespaces de infraestrutura, IstioCNI, Istio, a tag de revisão e os monitores. A fonte é `service-mesh-gitops/overlays/desenvolvimento`. As APIs e políticas dos exercícios permanecem manuais no repositório `mesh-apps-lab`.
+O AppProject `service-mesh` limita fonte, destinos e tipos de recurso. A Application `service-mesh` gerencia o Operator, os namespaces de infraestrutura, IstioCNI, Istio, a tag de revisão e os monitores. A fonte é `service-mesh-gitops/overlays/desenvolvimento`. As APIs e políticas dos exercícios permanecem manuais no repositório `mesh-apps-lab`.
 
 ## Instalação
 

@@ -2,6 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: keycloak-issuer-ca
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-config
 data:
   ca.crt: '-----BEGIN CERTIFICATE-----

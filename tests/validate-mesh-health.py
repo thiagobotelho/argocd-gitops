@@ -25,8 +25,12 @@ with tempfile.TemporaryDirectory() as td:
 print('PASS: 23 casos de saúde Sail executados com LuaJIT')
 
 rendered=[d for d in yaml.safe_load_all(subprocess.check_output(['kubectl','kustomize',str(root/'optional/service-mesh')],text=True)) if d]
-assert len(rendered)==1
-app=rendered[0]
+assert len(rendered)==2
+app=next(d for d in rendered if d["kind"]=="Application")
+project=next(d for d in rendered if d["kind"]=="AppProject")
+assert app["spec"]["project"]==project["metadata"]["name"]=="service-mesh"
+assert project["spec"]["sourceRepos"]==["https://github.com/thiagobotelho/service-mesh-gitops.git"]
+assert all(x["namespace"]!="mesh-lab" for x in project["spec"]["destinations"])
 assert app['kind']=='Application' and app['metadata']['name']=='service-mesh'
 assert not app['metadata'].get('finalizers')
 assert app['spec']['source']['path']=='overlays/desenvolvimento'

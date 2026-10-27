@@ -2,6 +2,8 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   name: openshift-gitops-operator
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops-operator
   annotations:
     argocd.argoproj.io/sync-wave: "0"
