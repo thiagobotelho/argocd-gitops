@@ -195,7 +195,7 @@ oc -n openshift-logging create secret generic loki-s3 \
 unset MINIO_ROOT_PASSWORD MINIO_ROOT_USER
 ```
 
-**Como ler os comandos:** openssl gera a senha em memória; printf envia seus bytes; a substituição de processo do Bash `<(...)` fornece um descritor ao oc, sem colocar a senha no argumento do processo ou em arquivo persistente. As chaves públicas usam from-literal. Não ative set -x. O segundo Secret deve usar a mesma senha do primeiro. Execute cada comando separadamente e confira seu retorno. Se uma criação falhar, não execute unset nem avance antes de corrigir a causa.
+**Como ler os comandos:** openssl gera a senha em memória; printf envia seus bytes; a substituição de processo disponível em Bash e Zsh `<(...)` fornece um descritor ao oc, sem colocar a senha no argumento do processo ou em arquivo persistente. As chaves públicas usam from-literal. Não ative set -x. O segundo Secret deve usar a mesma senha do primeiro. Execute cada comando separadamente e confira seu retorno. Se uma criação falhar, não execute unset nem avance antes de corrigir a causa.
 
 ```bash
 oc -n openshift-logging describe secret minio-credentials
