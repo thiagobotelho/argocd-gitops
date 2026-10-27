@@ -4,4 +4,3 @@ resources:
 - app-service-mesh-operator.yaml
 - app-service-mesh-control-plane.yaml
 - app-service-mesh-monitoring.yaml
-- app-mesh-apps-lab.yaml

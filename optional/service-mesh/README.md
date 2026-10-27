@@ -1,10 +1,17 @@
-# Service Mesh opcional para CRC
+# Infraestrutura opcional de Service Mesh
 
-Applications fora do App-of-Apps base e fora do agregador optional existente. Sem sync automático e sem finalizer de exclusão em cascata. Criar as Applications não inicia o laboratório; cada sync exige revisão manual.
+Este módulo cadastra três Applications com sincronização manual:
 
-Sequência didática: mesh-apps-lab cenário 01 e 02 antes do Operator; depois Operator → aprovação específica de InstallPlan → CSV/CRDs → plano de controle → readiness real → cenários 03–06 → monitores e dashboard. Não depender de waves entre Applications independentes.
+- service-mesh-operator: Subscription do Operator.
+- service-mesh-control-plane: Istio, IstioCNI, tag e namespaces de infraestrutura.
+- service-mesh-monitoring: monitores para o Prometheus existente.
 
-Um único Application mesh-apps-lab deve alternar spec.source.path e sincronizar com prune. Não criar uma Application por cenário. Se houver workloads preexistentes com os mesmos nomes, revise sua adoção antes do primeiro sync. [Guia completo](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/INSTALACAO-CRC.md).
+```bash
+oc apply -k optional/service-mesh
+```
 
-Tracing: substituir a fonte do Application service-mesh-control-plane por optional/tracing somente após validação do Collector existente; nunca criar dois gerenciadores para o mesmo Istio.
+Sincronize o Operator, revise e aprove o InstallPlan específico, aguarde CSV/CRDs, depois sincronize o plano de controle. Instale o monitoramento após conferir namespaces e seletores. Sync waves entre Applications independentes não substituem esses pré-requisitos.
 
+As APIs e políticas dos exercícios não são gerenciadas por este módulo. Use o repositório [mesh-apps-lab](https://github.com/thiagobotelho/mesh-apps-lab) manualmente. Nenhuma Application deve apontar para seus cenários.
+
+Tracing: optional/tracing substitui a fonte do mesmo Application de plano de controle; não crie dois proprietários do Istio. Consulte o [guia de instalação](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/INSTALACAO-CRC.md).
