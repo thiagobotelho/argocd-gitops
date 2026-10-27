@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: service-mesh-monitoring
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thiagobotelho/service-mesh-gitops.git
+    targetRevision: main
+    path: monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mesh-lab
+  syncPolicy:
+    syncOptions:
+    - PruneLast=true

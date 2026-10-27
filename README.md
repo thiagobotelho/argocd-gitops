@@ -152,3 +152,11 @@ oc apply --dry-run=client -k overlays/desenvolvimento
 O app-of-apps de `desenvolvimento` aponta para `overlays/desenvolvimento` dos
 repos gerenciados. `aceite` e `producao` apontam para os overlays equivalentes.
 Veja `docs/AMBIENTES.md`.
+
+## Laboratório opcional de Service Mesh
+
+O diretório [optional/service-mesh](optional/service-mesh/README.md) propõe Applications manuais para Operator, plano de controle, monitoramento e exemplos oficiais. Não faz parte da stack base. Os cenários de NetworkPolicy, mTLS e autorização usam um único Application com troca explícita de caminho e prune revisado. Conferir CSV/CRDs e readiness em cada fase; sync waves não são suficientes entre Applications.
+
+## Login do OpenShift por Keycloak
+
+O client confidencial openshift está definido no repositório keycloak-gitops; o provedor OAuth e a CA do CRC estão em bootstrap/crc-keycloak-provider.yaml. A credencial fica no Secret openshift-config/keycloak-openshift-client-secret, fora do Git. O bootstrap não faz parte da reconciliação normal do App-of-Apps. Consulte o [guia com arquivos, callback, claims, client secret e cuidados de reaplicação](docs/AUTENTICACAO-KEYCLOAK-CRC.md).

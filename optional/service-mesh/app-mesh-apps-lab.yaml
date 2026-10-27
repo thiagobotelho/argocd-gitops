@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mesh-apps-lab
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thiagobotelho/mesh-apps-lab.git
+    targetRevision: main
+    path: scenarios/01-baseline
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mesh-lab
+  syncPolicy:
+    syncOptions:
+    - PruneLast=true
