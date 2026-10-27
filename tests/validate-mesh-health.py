@@ -15,8 +15,11 @@ selected=[c for c in checks if c['group']=='sailoperator.io']
 assert {c['kind'] for c in selected}=={'Istio','IstioCNI','IstioRevisionTag'}
 with tempfile.TemporaryDirectory() as td:
  for check in selected:
-  for i,(obj,expected) in enumerate(cases):
+  extra=[]
+  if check['kind']=='IstioRevisionTag':
+   extra=[('{kind="IstioRevisionTag",metadata={generation=1},status={state="NotReferencedByAnything",istioRevision="mesh-crc",conditions={{type="Reconciled",status="True"}}}}','Healthy'),('{kind="IstioRevisionTag",metadata={generation=1},status={state="NotReferencedByAnything",conditions={{type="Reconciled",status="True"}}}}','Progressing')]
+  for i,(obj,expected) in enumerate(cases+extra):
    path=pathlib.Path(td)/'check.lua'
    path.write_text('obj='+obj+'\nlocal check=function()\n'+check['check']+'\nend\nlocal hs=check()\nassert(hs.status=="'+expected+'", hs.status)\n')
    subprocess.run(['luajit',str(path)],check=True)
-print('PASS: 21 casos de saúde Sail executados com LuaJIT')
+print('PASS: 23 casos de saúde Sail executados com LuaJIT')
