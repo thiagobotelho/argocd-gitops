@@ -396,48 +396,41 @@ oc -n grafana-operator get subscription,installplan,csv,pods
 As CRs devem vir depois da Subscription: o perfil usa Operator na wave 2, instância na 10, pastas na 35 e dashboards na 40. SkipDryRunOnMissingResource não cria a CRD nem torna segura uma ordem invertida. Confira a revisão do repositório e corrija a ordem no Git; depois atualize o diff e dispare novo Sync no Argo quando a operação anterior falhou. Uma CRD já presente deve ter condição Established antes de depender dela.
 
 
-### 6.4 Construir as imagens locais do MinIO e do cliente mc
+### 6.4 Acompanhar as imagens automáticas do MinIO e do cliente mc
 
-**Objetivo:** produzir as imagens usadas pelo overlay CRC. Ele declara BuildConfigs minio-crc e mc-crc, mas não inicia builds por trigger automático. Um CRC novo não contém as imagens do registro interno de uma instalação anterior. manifest unknown nesse endereço não é resolvido apenas aguardando o pod.
+**Objetivo:** conferir a produção das imagens usadas pelo overlay CRC. A sincronização completa de `loki` executa o hook `crc-minio-images`: ele inicia primeiro o build do servidor e depois o do cliente, aguardando as duas imagens antes de liberar o MinIO. Não há comando manual de build nesta etapa.
 
-Confira os objetos e a saúde do registro:
+Confira o registro integrado, as BuildConfigs e o andamento:
 
 ```bash
-oc -n openshift-logging get buildconfig,build,imagestream
 oc get clusteroperator image-registry
 oc -n openshift-image-registry get pods
+oc -n openshift-logging get buildconfig,build,imagestream
+oc -n openshift-logging get job crc-minio-images
+oc -n openshift-logging logs job/crc-minio-images
 ```
 
-**Esperado antes de iniciar:** BuildConfigs minio-crc e mc-crc existentes e registro disponível. Se os objetos ainda não existem, consulte o sync de loki; não crie uma BuildConfig diferente como atalho. Se já existe um build Pending ou Running, acompanhe esse build, sem iniciar uma duplicata. Se já terminou em Complete e sua tag está publicada, não é necessário reconstruir.
+**Esperado:** registro disponível e hook em execução ou concluído. Na primeira instalação surgem os builds `minio-crc` e `mc-crc`. Tags já publicadas são reutilizadas; um build ativo é acompanhado sem iniciar uma duplicata. O hook atende tanto BuildConfigs novas quanto as já existentes.
 
-Quando não houver build ativo nem imagem produzida, inicie primeiro o servidor:
+Após o hook concluir, confira as tags publicadas:
 
 ```bash
-oc -n openshift-logging start-build minio-crc --follow
-oc -n openshift-logging get builds
 oc -n openshift-logging get imagestreamtag minio-crc:RELEASE.2025-09-07T16-13-09Z
-```
-
-**Esperado:** build Complete e ImageStreamTag com imagem publicada. Não avance ao próximo build se o primeiro falhar. start-build executa compilação no cluster e pode consumir os recursos declarados na BuildConfig; acompanhe logs e eventos, sem disparar vários builds para tentar acelerar.
-
-Depois construa o cliente usado pelo Job de criação de bucket:
-
-```bash
-oc -n openshift-logging start-build mc-crc --follow
-oc -n openshift-logging get builds
 oc -n openshift-logging get imagestreamtag mc-crc:RELEASE.2025-08-13T08-35-41Z
 ```
 
-**Esperado:** segundo build Complete e tag publicada. Se houver falha, consulte o build pelo nome mostrado em get builds e seus logs; não troque imagens ou remova PVCs como correção genérica.
-
-O kubelet tentará puxar novamente a imagem após o backoff. Acompanhe:
+**Esperado:** ambas existem. Acompanhe então a aplicação e o bucket:
 
 ```bash
 oc -n openshift-logging rollout status deployment/minio --timeout=10m
 oc -n openshift-logging get jobs,pods
 ```
 
-**Esperado:** MinIO pronto e Job de bucket concluído; depois o sync pode avançar para LokiStack. A criação das BuildConfigs pelo Argo e a execução dos builds são ações distintas. Preserve o PVC minio-data, que não precisa ser recriado por uma falha de imagem. Veja [operações de build do OpenShift](https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/builds_using_buildconfig/basic-build-operations).
+**Esperado:** MinIO pronto e Job de bucket concluído; o sync pode avançar para o LokiStack. O hook tem prazo global de 35 minutos e interrompe em caso de falha. Consulte seus logs, os eventos e os logs do build pelo nome exibido em `get builds` antes de tentar novamente.
+
+Se `loki` já esgotou as tentativas, faça **Refresh** para carregar a revisão e depois **Sync completo** no Argo CD. Refresh isolado não dispara o hook; sync seletivo de recursos também não o executa. Após corrigir a causa de uma falha, um novo Sync substitui o hook anterior, acompanha builds ativos e reutiliza imagens publicadas. Preserve o PVC `minio-data`.
+
+A automação é exclusiva do overlay de desenvolvimento e depende de waves/hooks do Argo; `oc apply -k` isolado não reproduz essa ordem. Uma tag existente não é reconstruída automaticamente. Consulte [o funcionamento e a atualização das imagens](https://github.com/thiagobotelho/loki-gitops#imagens-automáticas-no-crc).
 
 ## 7. Validar Keycloak e preparar confiança TLS
 
