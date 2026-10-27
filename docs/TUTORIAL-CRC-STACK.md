@@ -351,6 +351,31 @@ Abra a Route do Argo, escolha login pelo OpenShift e autentique a sessão admini
 
 Confira também as imagens referenciadas nos overlays. Se alguma imagem for privada, crie o pull secret no namespace consumidor e vincule-o à ServiceAccount correspondente antes de iniciar o workload. Credenciais Git não autenticam pulls no Quay. ImagePullBackOff exige conferir a imagem, sua existência e a autenticação; não trocar a tag às cegas.
 
+### 5.4 Conferir a autorização do kubeadmin no Argo CD
+
+**Objetivo:** permitir somente a sincronização de `default/grafana` à conta de bootstrap do CRC. Administração no OpenShift não concede automaticamente administração na interface do Argo CD. O acesso padrão continua somente leitura.
+
+Depois de a CRD e a instância existirem, aplique a configuração de bootstrap:
+
+```bash
+oc kustomize overlays/cluster
+oc apply -k overlays/cluster
+oc -n openshift-gitops get configmap argocd-rbac-cm \
+  -o jsonpath='{.data.policy\.csv}{"\n"}{.data.scopes}{"\n"}'
+```
+
+**Esperado:** depois da reconciliação do operador, a política contém `p, kubeadmin, applications, sync, default/grafana, allow` e scopes `[groups, email]`. A regra está em `overlays/cluster/rbac-grafana-bootstrap.yaml`. Revise customizações antes de aplicar; esse overlay define o RBAC do bootstrap deste repositório.
+
+O conector OpenShift do Dex envia o nome do usuário no campo `email`; ele precisa ser considerado pelo RBAC além de `groups`. O identificador interno `sub` pode ser um UID e não deve ser fixado no Git. Esse desenho é para laboratório com o conector OpenShift. Para ambientes compartilhados ou outros IdPs, use identidades e grupos explicitamente autorizados.
+
+Saia do Argo CD e entre novamente pelo OpenShift para renovar a sessão. Ao retomar uma sincronização que esgotou tentativas, use **Sync completo**: Refresh apenas recalcula a comparação. A regra não concede ao kubeadmin permissão adicional para excluir aplicações ou sincronizar outros componentes.
+
+Quando a instância já for gerenciada pela Application `argocd-cluster`, atualize o arquivo no Git e deixe essa Application reconciliar a mudança. Alterações somente no CR podem ser revertidas pelo selfHeal; não edite diretamente o ConfigMap gerenciado pelo operador.
+
+Para reverter, remova somente a linha de permissão adicionada e restaure `scopes: '[groups]'` se nenhuma outra regra depender de `email`. Mantenha grupos e regras personalizados. Confirme a propagação e renove a sessão. A reversão dessa permissão não remove aplicações ou dados.
+
+Referências: [RBAC do Argo CD](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/) e [conector OpenShift do Dex](https://github.com/dexidp/dex/blob/master/connector/openshift/openshift.go).
+
 ## 6. Iniciar a stack base pelo App-of-Apps
 
 ### 6.1 Renderizar antes de aplicar
