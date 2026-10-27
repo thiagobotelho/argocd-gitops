@@ -155,7 +155,7 @@ Veja `docs/AMBIENTES.md`.
 
 ## Laboratório opcional de Service Mesh
 
-O diretório [optional/service-mesh](optional/service-mesh/README.md) propõe Applications manuais para Operator, plano de controle, monitoramento e exemplos oficiais. Não faz parte da stack base. Os cenários de NetworkPolicy, mTLS e autorização usam um único Application com troca explícita de caminho e prune revisado. Conferir CSV/CRDs e readiness em cada fase; sync waves não são suficientes entre Applications.
+O diretório [optional/service-mesh](optional/service-mesh/README.md) propõe Applications manuais somente para Operator, plano de controle e monitoramento. Não faz parte da stack base. Os cenários de NetworkPolicy, mTLS e autorização são aplicados manualmente pelo repositório mesh-apps-lab, sem Application no Argo CD. Conferir CSV/CRDs e readiness em cada fase; sync waves não são suficientes entre Applications.
 
 ## Login do OpenShift por Keycloak
 

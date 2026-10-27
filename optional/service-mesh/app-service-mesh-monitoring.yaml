@@ -11,7 +11,7 @@ spec:
     path: monitoring
   destination:
     server: https://kubernetes.default.svc
-    namespace: mesh-lab
+    namespace: istio-system
   syncPolicy:
     syncOptions:
     - PruneLast=true

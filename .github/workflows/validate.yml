@@ -19,3 +19,10 @@ jobs:
             while IFS= read -r -d '' file; do
               kubectl kustomize "$(dirname "$file")" >/dev/null
             done
+      - name: Verificar saúde dos recursos do Mesh
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y luajit
+          python3 -m venv /tmp/mesh-health-venv
+          /tmp/mesh-health-venv/bin/pip install PyYAML==6.0.3
+          /tmp/mesh-health-venv/bin/python tests/validate-mesh-health.py
