@@ -2,9 +2,11 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: service-mesh
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops
 spec:
-  project: default
+  project: service-mesh
   source:
     repoURL: https://github.com/thiagobotelho/service-mesh-gitops.git
     targetRevision: main
@@ -12,6 +14,8 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
+  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
+  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   syncPolicy:
     syncOptions:
     - PruneLast=true
