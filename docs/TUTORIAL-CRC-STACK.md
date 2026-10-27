@@ -457,9 +457,9 @@ oc -n grafana get grafana,pods,route
 oc -n openshift-gitops get application grafana
 ```
 
-**Esperado:** aplicação Synced/Healthy, pods prontos e login Keycloak funcionando em janela privada. Teste grafana-admin com a senha escolhida na etapa 4.4. Confira o papel recebido; os grupos do Grafana usam os caminhos configurados no realm e não devem ser alterados para imitar os grupos SAML.
+**Esperado nesta etapa:** pods do Grafana prontos e login Keycloak funcionando em janela privada. O datasource Zabbix ainda depende da etapa 9.3; registre essa pendência e conclua esse bootstrap antes de exigir Synced/Healthy global. Não marque a stack inteira como PASS neste ponto. Teste grafana-admin com a senha escolhida na etapa 4.4. Confira o papel recebido; os grupos do Grafana usam os caminhos configurados no realm e não devem ser alterados para imitar os grupos SAML.
 
-O Job PostSync grafana-enable-zabbix-app-plugin já está declarado no overlay; confira sua conclusão na UI do Argo. No Grafana, veja o plugin Zabbix instalado e habilitado. Não substitua esse teste por apenas abrir um dashboard.
+O Job PostSync grafana-enable-zabbix-app-plugin já está declarado no overlay; confira sua conclusão na UI do Argo depois de completar as dependências da etapa 9.3. No Grafana, veja o plugin Zabbix instalado e habilitado. Não substitua esse teste por apenas abrir um dashboard.
 
 ## 9. Configurar Zabbix SAML/JIT manualmente
 
