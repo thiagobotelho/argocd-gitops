@@ -160,3 +160,7 @@ O diretório [optional/service-mesh](optional/service-mesh/README.md) propõe Ap
 ## Login do OpenShift por Keycloak
 
 O client confidencial openshift está definido no repositório keycloak-gitops; o provedor OAuth e a CA do CRC estão em bootstrap/crc-keycloak-provider.yaml. A credencial fica no Secret openshift-config/keycloak-openshift-client-secret, fora do Git. O bootstrap não faz parte da reconciliação normal do App-of-Apps. Consulte o [guia com arquivos, callback, claims, client secret e cuidados de reaplicação](docs/AUTENTICACAO-KEYCLOAK-CRC.md).
+
+## Manual de operação
+
+Consulte [docs/OPERACAO.md](docs/OPERACAO.md) para os procedimentos de configuração, verificação e manutenção.
