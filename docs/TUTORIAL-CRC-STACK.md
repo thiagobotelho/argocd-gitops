@@ -342,8 +342,7 @@ Aplicação -> OpenTelemetry Collector -> TempoMonolithic
 Grafana -> Tempo/Loki/Prometheus/Zabbix
 ```
 
-O Red Hat OpenTelemetry Collector 0.152.1 validado neste ambiente possui
-`span_metrics`, mas não possui connector `servicegraph`. Por isso:
+Confira os componentes disponíveis na imagem do Collector. Quando houver apenas span_metrics e não servicegraph:
 
 - Traces Drilldown/TraceQL e links trace → logs/métricas ficam preparados;
 - Service Graph fica configurado no datasource, mas só mostrará dados se houver
@@ -435,3 +434,4 @@ crc delete
   está configurado onde necessário.
 - Rotas usam certificados locais do CRC; em produção revise TLS, CA, cookies e
   headers.
+
