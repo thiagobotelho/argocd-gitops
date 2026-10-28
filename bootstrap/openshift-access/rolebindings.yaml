@@ -1,0 +1,170 @@
+# Bootstrap de autorização OIDC. Aplicar após criar os seis namespaces.
+# Membros são geridos no Keycloak e sincronizados pelo OAuth no login.
+# RoleBinding limita o ClusterRole ao namespace, sem permissão global.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-viewers
+  namespace: grafana
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-project-admins
+  namespace: grafana
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-project-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-viewers
+  namespace: zabbix
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-project-admins
+  namespace: zabbix
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-project-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-viewers
+  namespace: tempo
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-project-admins
+  namespace: tempo
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-project-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-viewers
+  namespace: pyroscope
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-project-admins
+  namespace: pyroscope
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-project-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-viewers
+  namespace: observability
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-project-admins
+  namespace: observability
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-project-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-viewers
+  namespace: observability-apps
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-viewers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-project-admins
+  namespace: observability-apps
+subjects:
+- kind: Group
+  apiGroup: rbac.authorization.k8s.io
+  name: openshift-project-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
