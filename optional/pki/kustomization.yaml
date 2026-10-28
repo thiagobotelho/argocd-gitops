@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../vault
+- ../cert-manager
+- ../cert-manager-vault
+- ../service-mesh-vault
+- ../service-mesh-observability
+patches:
+- target:
+    kind: Application
+    name: service-mesh
+  patch: "- op: replace\n  path: /spec/source/path\n  value: optional/observability-vault\n"

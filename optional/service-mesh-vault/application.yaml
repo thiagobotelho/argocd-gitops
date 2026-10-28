@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: service-mesh-vault
+  namespace: openshift-gitops
+spec:
+  project: service-mesh-vault
+  source:
+    repoURL: https://github.com/thiagobotelho/service-mesh-gitops.git
+    targetRevision: main
+    path: optional/vault-lab
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-vault-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+    - PruneLast=true
+    - SkipDryRunOnMissingResource=true

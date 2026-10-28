@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cert-manager
+  namespace: openshift-gitops
+spec:
+  description: "Instala\xE7\xE3o opcional cert-manager"
+  sourceRepos:
+  - https://github.com/thiagobotelho/cert-manager-gitops.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: cert-manager-operator
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  namespaceResourceWhitelist:
+  - group: operators.coreos.com
+    kind: OperatorGroup
+  - group: operators.coreos.com
+    kind: Subscription

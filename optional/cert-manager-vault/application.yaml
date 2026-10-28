@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-vault
+  namespace: openshift-gitops
+spec:
+  project: cert-manager-vault
+  source:
+    repoURL: https://github.com/thiagobotelho/cert-manager-gitops.git
+    targetRevision: main
+    path: integration/vault
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: istio-vault-system
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+    - PruneLast=true
+    - SkipDryRunOnMissingResource=true

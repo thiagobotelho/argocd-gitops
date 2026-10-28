@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: openshift-gitops
+spec:
+  project: vault
+  source:
+    repoURL: https://github.com/thiagobotelho/vault-gitops.git
+    targetRevision: main
+    path: overlays/desenvolvimento
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+    - PruneLast=true
+    - SkipDryRunOnMissingResource=true
+  ignoreDifferences:
+  - group: ''
+    kind: ConfigMap
+    name: vault-service-ca
+    namespace: vault
+    jsonPointers:
+    - /data

@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cert-manager-vault
+  namespace: openshift-gitops
+spec:
+  description: "Instala\xE7\xE3o opcional cert-manager-vault"
+  sourceRepos:
+  - https://github.com/thiagobotelho/cert-manager-gitops.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: istio-vault-system
+  - server: https://kubernetes.default.svc
+    namespace: istio-csr-vault
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ServiceAccount
+  - group: rbac.authorization.k8s.io
+    kind: Role
+  - group: rbac.authorization.k8s.io
+    kind: RoleBinding
+  - group: cert-manager.io
+    kind: Issuer
+  - group: operator.openshift.io
+    kind: IstioCSR

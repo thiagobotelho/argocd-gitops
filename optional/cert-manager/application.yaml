@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: openshift-gitops
+spec:
+  project: cert-manager
+  source:
+    repoURL: https://github.com/thiagobotelho/cert-manager-gitops.git
+    targetRevision: main
+    path: overlays/desenvolvimento
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager-operator
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    syncOptions:
+    - PruneLast=true
+    - SkipDryRunOnMissingResource=true
