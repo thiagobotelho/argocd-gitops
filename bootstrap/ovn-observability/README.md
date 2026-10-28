@@ -34,6 +34,20 @@ Confirme OVNObservability habilitado para a versão atual, Operators disponívei
 sem degradação/progressão e pools atualizados. A condição isolada Available
 não basta enquanto a reconciliação estiver em andamento.
 
+Se o CRC reiniciar e a API não voltar, no host que gerencia a VM execute:
+
+```bash
+crc status
+crc start
+oc get --raw=/readyz
+oc get nodes
+oc get mcp
+```
+
+Use crc start para retomar a VM existente; não recrie o cluster para concluir
+a reconciliação. Confira kubelet e CRI-O se a VM estiver ligada, mas a API
+continuar indisponível. Aguarde a recuperação antes de selecionar o overlay.
+
 ## Selecionar o perfil de coleta
 
 Com MinIO, Loki e Network Observability preparados:
