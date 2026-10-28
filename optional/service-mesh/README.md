@@ -24,3 +24,7 @@ Antes de migrar recursos existentes, desative temporariamente `spec.syncPolicy.a
 4. Confirme Synced/Healthy, a revisão ativa, CNI, tag, monitores e preservação das APIs. Não mantenha duas Applications gerenciando os mesmos recursos.
 
 Para reverter a migração, retire `service-mesh` sem cascata e recadastre as três definições anteriores a partir da revisão Git salva. Confira propriedade e diff antes de sincronizar, sem prune.
+
+## Kiali opcional
+
+Para incluir Kiali na mesma Application, use `oc apply -k optional/service-mesh-kiali`. Consulte o [perfil com Kiali](../service-mesh-kiali/README.md). O perfil deste diretório permanece sem Kiali.

@@ -1016,6 +1016,20 @@ oc -n istio-cni get pods
 
 Confira CSV `Succeeded`, CRDs `Established` e condições `Ready` de Istio/CNI. Se já existia um InstallPlan manual pendente, revise o plano indicado em `status.installPlanRef` da Subscription e aprove somente esse plano uma vez. Para diagnóstico, consulte a [instalação do mesh](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/INSTALACAO-CRC.md).
 
+### Kiali opcional na mesma Application
+
+Para habilitar o grafo e as métricas do mesh usando o Prometheus de aplicações existente:
+
+```bash
+cd "$WORKDIR/argocd-gitops"
+oc apply -k optional/service-mesh-kiali
+oc -n openshift-gitops get application service-mesh
+oc -n istio-system get kiali,pods,route
+oc -n istio-system get route kiali -o jsonpath='https://{.spec.host}{"\n"}'
+```
+
+Entre pelo OpenShift e selecione seu IdP. No Kiali, abra **Traffic Graph**, selecione `mesh-lab` e gere tráfego dos exercícios. Consulte o [guia do Kiali](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/KIALI.md). Este perfil substitui a fonte da mesma Application; não reaplique o perfil sem Kiali depois dele.
+
 ### 13.3 Aplicar exercícios manualmente, um cenário por vez
 
 ```bash
