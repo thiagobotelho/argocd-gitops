@@ -969,6 +969,23 @@ oc adm top pods -n netobserv
 
 Aguarde Operator e CRD antes do FlowCollector. Confira o recurso `Ready` e fluxos recentes na interface. Para sampling e retenção, consulte as [políticas](https://github.com/thiagobotelho/network-observability-gitops/blob/main/docs/POLITICAS.md).
 
+### 12.1 Network Events experimental opcional
+
+Somente para cluster descartável: TechPreviewNoUpgrade é irreversível e impede
+atualizações menores. Não é requisito para os exercícios de NetworkPolicy.
+Execute separadamente o [bootstrap OVNObservability](../bootstrap/ovn-observability/README.md),
+aguarde os Operators/pools estabilizarem e selecione o perfil:
+
+```bash
+cd "$WORKDIR/argocd-gitops"
+oc apply -k optional/network-events
+oc -n openshift-gitops get application network-observability
+```
+
+No Console, use Observe → Network Traffic → Network Events. O diretório
+optional padrão continua sem esse recurso. Reaplicá-lo desativa somente a
+coleta experimental; não reverte a FeatureGate.
+
 ## 13. Service Mesh opcional, em uma única Application
 
 ### 13.1 Conferir catálogo e cadastrar a infraestrutura
