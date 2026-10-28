@@ -37,3 +37,15 @@ assert app['spec']['source']['path']=='overlays/desenvolvimento'
 assert app['spec']['source']['repoURL']=='https://github.com/thiagobotelho/service-mesh-gitops.git'
 assert app['spec']['syncPolicy']['automated']=={'selfHeal':True,'prune':False}
 print('PASS: uma Application automática de infraestrutura, sem prune, exclusão em cascata ou APIs')
+
+with_kiali=[d for d in yaml.safe_load_all(subprocess.check_output(['kubectl','kustomize',str(root/'optional/service-mesh-kiali')],text=True)) if d]
+assert len(with_kiali)==2
+kapp=next(d for d in with_kiali if d['kind']=='Application')
+kproject=next(d for d in with_kiali if d['kind']=='AppProject')
+assert kapp['metadata']['name']==app['metadata']['name']
+assert kapp['spec']['source']['path']=='optional/kiali'
+assert kapp['spec']['syncPolicy']==app['spec']['syncPolicy']
+assert {'group':'kiali.io','kind':'Kiali'} in kproject['spec']['namespaceResourceWhitelist']
+assert not any(d.get('spec',{}).get('source',{}).get('path')=='optional/kiali' for d in rendered)
+assert not any(r.get('group')=='kiali.io' for r in project['spec']['namespaceResourceWhitelist'])
+print('PASS: Kiali opcional na mesma Application, perfil padrão sem alteração')

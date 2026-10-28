@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Alternativa ao perfil sem Kiali: mantém uma única Application.
+resources:
+- ../service-mesh
+patches:
+- target:
+    kind: Application
+    name: service-mesh
+  patch: |-
+    - op: replace
+      path: /spec/source/path
+      value: optional/kiali
+- target:
+    kind: AppProject
+    name: service-mesh
+  patch: |-
+    - op: add
+      path: /spec/destinations/-
+      value:
+        server: https://kubernetes.default.svc
+        namespace: observability-apps
+    - op: add
+      path: /spec/namespaceResourceWhitelist/-
+      value:
+        group: kiali.io
+        kind: Kiali
+    - op: add
+      path: /spec/namespaceResourceWhitelist/-
+      value:
+        group: networking.k8s.io
+        kind: NetworkPolicy
