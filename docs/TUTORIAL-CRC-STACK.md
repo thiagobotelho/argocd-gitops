@@ -1000,34 +1000,21 @@ oc apply -k optional/service-mesh
 oc -n openshift-gitops get application service-mesh
 ```
 
-Confira a compatibilidade do canal/CSV com o OpenShift. No Argo, abra **service-mesh**, confira o diff e execute **Sync**.
+A Application inicia o sync automaticamente e corrige divergências com self-heal. O prune automático fica desativado. O Argo gerencia somente a infraestrutura do mesh.
 
-### 13.2 Aprovar somente o InstallPlan escolhido
+### 13.2 Acompanhar a instalação automática
+
+A Subscription usa `installPlanApproval: Automatic`. A instalação e as atualizações no canal `stable-3.4` dispensam aprovação manual. `startingCSV` define a versão inicial, sem fixar atualizações futuras.
 
 ```bash
 oc -n openshift-operators get subscription servicemeshoperator3
 oc -n openshift-operators get installplan,csv
-```
-
-Identifique o InstallPlan associado à Subscription `servicemeshoperator3`:
-
-```bash
-printf '%s' 'Nome do InstallPlan conferido para Service Mesh: '
-IFS= read -r MESH_INSTALLPLAN
-oc -n openshift-operators get installplan "$MESH_INSTALLPLAN" -o yaml
-```
-
-Confira `spec.clusterServiceVersionNames`. Aprove somente o plano revisado:
-
-```bash
-oc -n openshift-operators patch installplan "$MESH_INSTALLPLAN" --type=merge -p '{"spec":{"approved":true}}'
-oc -n openshift-operators get csv
 oc get istios,istiocnis,istiorevisions,istiorevisiontags
 oc -n istio-system get pods
 oc -n istio-cni get pods
 ```
 
-Confira CSV `Succeeded`, CRDs `Established` e condições `Ready` de Istio/CNI. Para diagnóstico, consulte a [instalação do mesh](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/INSTALACAO-CRC.md).
+Confira CSV `Succeeded`, CRDs `Established` e condições `Ready` de Istio/CNI. Se já existia um InstallPlan manual pendente, revise o plano indicado em `status.installPlanRef` da Subscription e aprove somente esse plano uma vez. Para diagnóstico, consulte a [instalação do mesh](https://github.com/thiagobotelho/service-mesh-gitops/blob/main/docs/INSTALACAO-CRC.md).
 
 ### 13.3 Aplicar exercícios manualmente, um cenário por vez
 
