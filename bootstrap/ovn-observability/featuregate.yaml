@@ -1,0 +1,9 @@
+# Opt-in manual para cluster descartável; não incluir no App-of-Apps.
+# TechPreviewNoUpgrade habilita um conjunto de recursos experimentais.
+# A mudança não tem reversão suportada e impede atualizações menores.
+apiVersion: config.openshift.io/v1
+kind: FeatureGate
+metadata:
+  name: cluster
+spec:
+  featureSet: TechPreviewNoUpgrade
