@@ -12,8 +12,6 @@ spec:
     path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
-    # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-    # Namespace deste objeto; não confundir com seleção de namespaces de origem.
     namespace: metallb-system
   ignoreDifferences:
     - group: metallb.io
@@ -22,7 +20,6 @@ spec:
       namespace: metallb-system
       jsonPointers:
         - /spec/addresses
-  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   syncPolicy:
     automated:

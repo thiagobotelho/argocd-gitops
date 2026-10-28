@@ -2,8 +2,6 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-monitoring-to-check-endpoints
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-apiserver
   annotations:
     argocd.argoproj.io/sync-wave: "3"

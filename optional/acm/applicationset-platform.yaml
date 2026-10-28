@@ -2,8 +2,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: openshift-local-stack-platform
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops
 spec:
   goTemplate: true
@@ -13,7 +11,6 @@ spec:
     - matrix:
         generators:
           - clusters:
-              # Seletores precisam corresponder aos labels dos recursos de destino.
               # Seletores precisam corresponder aos labels dos recursos de destino.
               selector:
                 matchLabels:
@@ -82,7 +79,6 @@ spec:
       destination:
         server: '{{ .server }}'
         namespace: '{{ if eq .appName "keycloak" }}{{ index .metadata.labels "gitops.stack/keycloak-namespace" }}{{ else }}{{ .destinationNamespace }}{{ end }}'
-      # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
       # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
       syncPolicy:
         automated:

@@ -1087,3 +1087,7 @@ Registre resultados e evidências fora dos repositórios: `PASS`, `FAIL`, `BLOCK
 - [Operação desta stack](OPERACAO.md) e [autenticação OpenShift/Keycloak](AUTENTICACAO-KEYCLOAK-CRC.md).
 
 Shells: [Bash](https://www.gnu.org/software/bash/manual/html_node/Bash-Builtins.html) e [Zsh](https://zsh.sourceforge.io/Doc/Release/Shell-Builtin-Commands.html#index-read).
+
+## Observabilidade opcional do mesh
+
+Depois de estabilizar os backends, selecione o perfil completo conforme [arquitetura e integrações](ARQUITETURA-E-INTEGRACOES.md). Consulte o guia operacional do componente para tracing, consultas e alertas; os exercícios permanecem em mesh-apps-lab.

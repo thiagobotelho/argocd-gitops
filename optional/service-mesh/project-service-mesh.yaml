@@ -4,8 +4,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: service-mesh
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
