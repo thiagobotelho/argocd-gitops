@@ -267,6 +267,33 @@ Não há comando nesta etapa. O App-of-Apps configura o MetalLB automaticamente 
 
 Use somente em rede de laboratório com essa faixa disponível. Para aceite e produção, configure a faixa explicitamente.
 
+### 4.7 Senha inicial do administrador OpenShift
+
+Escolha uma senha própria para `openshift-admin`. Confira o Secret:
+
+```bash
+oc -n keycloak-dev get secret keycloak-openshift-users --ignore-not-found
+```
+
+Se estiver ausente:
+
+```bash
+printf '%s' 'Senha inicial de openshift-admin: '
+IFS= read -r -s OPENSHIFT_ADMIN_PASSWORD
+printf '\n'
+test -n "$OPENSHIFT_ADMIN_PASSWORD"
+```
+
+Com a senha preenchida:
+
+```bash
+oc -n keycloak-dev create secret generic keycloak-openshift-users \
+  --from-file=OPENSHIFT_ADMIN_PASSWORD=<(printf '%s' "$OPENSHIFT_ADMIN_PASSWORD")
+unset OPENSHIFT_ADMIN_PASSWORD
+```
+
+Preserve o Secret existente; esse passo não é rotação de senha.
+
 ## 5. Instalar OpenShift GitOps
 
 ### 5.1 Conferir os manifests e instalar o Operator
@@ -467,6 +494,17 @@ Entre com o `username` e a senha consultados. A saída da consulta de senha é c
 Selecione o realm **observability**.
 
 Se a conta inicial foi removida ou a senha mudou, use o administrador permanente existente. Para recuperação, siga a [documentação do Keycloak](https://www.keycloak.org/server/bootstrap-admin-recovery).
+
+Após o Job de importação concluir, inicialize somente senhas ausentes:
+
+```bash
+cd "$WORKDIR/keycloak-gitops"
+git status --short
+git pull --ff-only
+python3 scripts/initialize-lab-passwords.py --initialize-missing
+```
+
+Resolva alterações locais antes do pull. Use os Secrets das etapas 4.4 e 4.7; senhas já configuradas são preservadas.
 
 ### 7.3 Obter a CA do ingress deste CRC
 
@@ -756,6 +794,71 @@ oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
 
 Aguarde `authentication` ficar disponível e sem degradação. Confira `developer keycloak` na lista de provedores. Teste o login Keycloak em janela privada e confira as permissões do usuário; mantenha a sessão de `kubeadmin` aberta.
 
+### 10.3 Aplicar as permissões dos grupos
+
+No Argo, sincronize **keycloak-dev** e aguarde o Job `keycloak-config-cli-observability` concluir.
+
+| Grupo Keycloak | Membro inicial | Papel |
+| --- | --- | --- |
+| openshift-viewers | Nenhum | view nos seis namespaces da stack |
+| openshift-project-admins | observability-admin | admin nos mesmos namespaces |
+| openshift-cluster-admins | openshift-admin | cluster-admin com vínculo separado |
+
+Aplique os vínculos com a sessão administrativa:
+
+```bash
+cd "$WORKDIR/argocd-gitops"
+git status --short
+git pull --ff-only
+oc get namespace grafana zabbix tempo pyroscope observability observability-apps
+oc kustomize bootstrap/openshift-access
+oc apply -k bootstrap/openshift-access
+```
+
+Resolva alterações locais antes do pull. Confira os doze RoleBindings antes de aplicar. O papel admin de projeto permite ler Secrets e gerenciar recursos desses namespaces; atribua o grupo somente a operadores autorizados.
+
+Aplique separadamente o acesso global da conta `openshift-admin`:
+
+```bash
+oc kustomize bootstrap/openshift-access/cluster-admin
+oc apply -k bootstrap/openshift-access/cluster-admin
+```
+
+Esse vínculo concede administração completa do cluster. Mantenha kubeadmin até testar o novo administrador.
+
+### 10.4 Testar o acesso pelo Keycloak
+
+Abra o console OpenShift em janela privada, selecione **keycloak** e entre com **observability-admin**, usando sua senha atual. Confira o acesso a grafana, zabbix, tempo, pyroscope, observability e observability-apps.
+
+Na sessão administrativa, confira a identidade e os grupos sincronizados:
+
+```bash
+oc get user observability-admin
+oc get group openshift-project-admins -o yaml
+oc auth can-i create deployments.apps -n grafana --as=observability-admin --as-group=openshift-project-admins
+oc auth can-i create clusterrolebindings.rbac.authorization.k8s.io --as=observability-admin --as-group=openshift-project-admins
+```
+
+As duas últimas consultas devem retornar `yes` e `no`. Elas testam RBAC por impersonação; confirme separadamente o login na janela privada. Os grupos aparecem no OpenShift após login de seus membros.
+
+Para leitura, associe uma conta autorizada ao grupo **openshift-viewers** no Keycloak e renove sua sessão. Para os demais testes e reversão, consulte [o bootstrap de acesso](../bootstrap/openshift-access/README.md). Preserve o acesso kubeadmin até validar também o novo administrador global.
+
+### 10.5 Entrar como administrador do cluster e do Argo
+
+Em uma nova janela privada do console OpenShift, escolha **keycloak** e entre como **openshift-admin** com sua senha atual. Confira o acesso à perspectiva administrativa e aos projetos do cluster.
+
+Na sessão kubeadmin, confira os grupos e o vínculo:
+
+```bash
+oc get user openshift-admin
+oc get group openshift-cluster-admins -o yaml
+oc get clusterrolebinding keycloak-openshift-cluster-admins
+```
+
+No Argo, sincronize **argocd-cluster**. Saia da interface e escolha **Log in via OpenShift**; na tela do OpenShift, selecione **keycloak** e entre como **openshift-admin**. Confira o usuário e o grupo em **User Info** e teste a sincronização de uma aplicação autorizada.
+
+Mantenha o `admin` local do Argo como recuperação. As contas `observability-admin` e de leitura não recebem administração do Argo por esse mapeamento.
+
 ## 11. Verificar a stack base
 
 ### 11.1 Reconciliação e recursos
@@ -774,7 +877,7 @@ oc -n zabbix get pods,svc,route,pvc
 
 Confira Applications habilitadas `Synced / Healthy`, PVCs `Bound`, workloads prontos e Jobs concluídos. Investigue pods em erro antes de seguir.
 
-### 11.2 MetalLB: pool, atribuição e acesso
+### 11.2 Conferir o MetalLB
 
 ```bash
 oc get nodes -o wide
@@ -783,6 +886,10 @@ oc -n metallb-system get job address-pool-configurator
 ```
 
 Confira o Job concluído e a faixa `.200–.250` da rede do nó.
+
+#### Testar IP LoadBalancer e conectividade — opcional
+
+Execute somente para validar serviços LoadBalancer. Para continuar a instalação, avance para 11.3.
 
 Crie o workload de verificação:
 

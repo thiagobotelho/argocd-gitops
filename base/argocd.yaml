@@ -207,6 +207,8 @@ spec:
     policy: |
       g, system:cluster-admins, role:admin
       g, cluster-admins, role:admin
+      # Grupo recebido pelo Dex no login OpenShift/Keycloak.
+      g, openshift-cluster-admins, role:admin
     scopes: '[groups]'
   repo:
     resources:

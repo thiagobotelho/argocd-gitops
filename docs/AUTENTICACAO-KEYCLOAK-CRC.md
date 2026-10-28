@@ -58,3 +58,39 @@ Antes de reaplicar o bootstrap em outro estado do cluster, revisar os identityPr
 ## Verificar a integração
 
 Confira o provedor no OAuth cluster, a presença do Secret e a cadeia de confiança sem exibir credenciais. Abra o Console, escolha o provedor Keycloak, autentique um usuário e confirme a identidade e as permissões de RBAC. Teste também usuário sem autorização e logout. Após rotacionar o client secret, verifique o login novamente.
+
+## Usuários, grupos e permissões
+
+| Grupo | Membro inicial | Concessão |
+| --- | --- | --- |
+| openshift-viewers | Nenhum | view nos namespaces da stack |
+| openshift-project-admins | observability-admin | admin nos namespaces da stack |
+| openshift-cluster-admins | openshift-admin | cluster-admin por entrypoint separado |
+
+Os grupos são declarados no realm de `keycloak-gitops`; o client `openshift`
+emite seus nomes sem caminho completo. O provedor OAuth sincroniza a associação
+no login. Os usuários de aplicação mantêm seus grupos originais; a nova
+associação de `observability-admin` não redefine sua senha.
+
+Aplique [bootstrap/openshift-access](../bootstrap/openshift-access/README.md)
+para autorizar acesso somente a grafana, zabbix, tempo, pyroscope, observability
+e observability-apps. Admin de projeto permite ler Secrets e gerenciar recursos
+locais; não concede administração global. O acesso do Argo CD é independente.
+
+Após novo login no console, confira o User e o Group com uma sessão kubeadmin.
+Testes `oc auth can-i --as` validam RBAC por impersonação, sem comprovar o fluxo
+OIDC. Mantenha a sessão administrativa até concluir login, papel recebido e
+logout. Registre a evidência fora do Git, sem tokens ou senhas.
+
+### Argo CD via OpenShift e Keycloak
+
+Fluxo: Argo CD → Dex → OpenShift OAuth → Keycloak. Use o botão de login
+OpenShift e escolha o provedor `keycloak`. O grupo `openshift-cluster-admins`
+é mapeado para `role:admin` do Argo em `base/argocd.yaml`; o padrão SSO
+continua readonly. Preserve o admin local para recuperação.
+
+A conta `openshift-admin` pertence ao grupo global. Sua senha inicial vem do
+Secret `keycloak-dev/keycloak-openshift-users`, chave `OPENSHIFT_ADMIN_PASSWORD`.
+Depois da importação, `scripts/initialize-lab-passwords.py --initialize-missing`
+do repositório Keycloak inicializa somente senhas ausentes. Nunca versionar ou
+publicar os valores. Após rotação, use a senha atual da conta.
