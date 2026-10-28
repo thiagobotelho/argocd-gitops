@@ -3,8 +3,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: network-observability
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops
 spec:
   project: default
@@ -15,7 +13,6 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: openshift-netobserv-operator
-  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   syncPolicy:
     automated:

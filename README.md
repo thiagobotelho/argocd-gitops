@@ -164,3 +164,7 @@ O client confidencial openshift está definido no repositório keycloak-gitops; 
 ## Manual de operação
 
 Consulte [docs/OPERACAO.md](docs/OPERACAO.md) para os procedimentos de configuração, verificação e manutenção.
+
+## Responsabilidades e integrações
+
+Consulte [arquitetura e integrações](docs/ARQUITETURA-E-INTEGRACOES.md) para a propriedade dos recursos, dependências e seleção do perfil opcional do mesh.

@@ -4,8 +4,6 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '1'
   name: openshift-gitops
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops
   finalizers:
     - argoproj.io/finalizer
@@ -141,7 +139,6 @@ spec:
     ingress:
       enabled: false
     # Recursos ou dependências desta seção; avaliar seu escopo antes de alterar.
-    # Recursos ou dependências desta seção; avaliar seu escopo antes de alterar.
     resources:
       limits:
         cpu: '1'
@@ -236,7 +233,6 @@ spec:
         cpu: 250m
         memory: 128Mi
   # TLS define transporte e confiança; não desabilitar validação para contornar erros.
-  # TLS define transporte e confiança; não desabilitar validação para contornar erros.
   tls:
     ca: {}
   redis:
@@ -248,7 +244,6 @@ spec:
         cpu: 250m
         memory: 256Mi
   controller:
-    # A ordem de processamento influencia memória, descarte e agrupamento de dados.
     # A ordem de processamento influencia memória, descarte e agrupamento de dados.
     processors: {}
     resources:

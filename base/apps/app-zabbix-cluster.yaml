@@ -2,8 +2,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: zabbix
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "30"
@@ -16,7 +14,6 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: zabbix
-  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
   syncPolicy:
     automated: {prune: true, selfHeal: true}

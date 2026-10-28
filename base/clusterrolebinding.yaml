@@ -10,14 +10,10 @@ metadata:
     argocd.argoproj.io/tracking-id: >-
       argocd-cluster:rbac.authorization.k8s.io/ClusterRoleBinding:openshift-gitops/openshift-gitops-application-controller
 # Identidades que recebem as permissões declaradas pelo papel referenciado.
-# Identidades que recebem as permissões declaradas pelo papel referenciado.
 subjects:
   - kind: ServiceAccount
     name: openshift-gitops-argocd-application-controller
-    # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-    # Namespace deste objeto; não confundir com seleção de namespaces de origem.
     namespace: openshift-gitops
-# Referência de permissão; este vínculo não cria identidades no provedor.
 # Referência de permissão; este vínculo não cria identidades no provedor.
 roleRef:
   apiGroup: rbac.authorization.k8s.io
