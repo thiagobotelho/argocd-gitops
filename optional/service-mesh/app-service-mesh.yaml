@@ -2,8 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: service-mesh
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  # Namespace da Application no Argo CD.
   namespace: openshift-gitops
 spec:
   project: service-mesh
@@ -14,8 +13,10 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: istio-system
-  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
-  # Revisar autosync e prune: sincronização e exclusão são decisões distintas.
+  # Reconcilia a infraestrutura automaticamente, sem excluir recursos removidos do Git.
   syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
     syncOptions:
     - PruneLast=true

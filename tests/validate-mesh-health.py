@@ -35,5 +35,5 @@ assert app['kind']=='Application' and app['metadata']['name']=='service-mesh'
 assert not app['metadata'].get('finalizers')
 assert app['spec']['source']['path']=='overlays/desenvolvimento'
 assert app['spec']['source']['repoURL']=='https://github.com/thiagobotelho/service-mesh-gitops.git'
-assert not app['spec']['syncPolicy'].get('automated')
-print('PASS: uma Application manual de infraestrutura, sem exclusão em cascata ou APIs')
+assert app['spec']['syncPolicy']['automated']=={'selfHeal':True,'prune':False}
+print('PASS: uma Application automática de infraestrutura, sem prune, exclusão em cascata ou APIs')
