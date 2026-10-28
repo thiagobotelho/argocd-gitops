@@ -941,7 +941,21 @@ Para verificar persistência, crie dados descartáveis, reinicie um workload por
 
 ## 12. Network Observability opcional
 
-Execute após estabilizar a stack base e conferir a capacidade disponível:
+Após estabilizar a stack base, prepare o bucket e o Secret do Loki dedicado:
+
+```bash
+oc whoami
+oc -n openshift-logging rollout status deployment/minio --timeout=5m
+oc create namespace netobserv --dry-run=client -o yaml | oc apply -f -
+cd "$WORKDIR/network-observability-gitops"
+bash scripts/bootstrap-netobserv-loki.sh
+bash scripts/bootstrap-netobserv-loki.sh --check
+```
+
+O bootstrap usa o contexto atual e aceita somente o CRC. Se a autenticação
+falhar, refaça o login no mesmo terminal. Não envie senhas ou tokens.
+
+Confira a capacidade disponível e cadastre a Application:
 
 ```bash
 cd "$WORKDIR/argocd-gitops"
