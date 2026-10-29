@@ -751,25 +751,13 @@ Execute após o Keycloak estar estável. Preserve os provedores existentes e a s
 
 ### 10.1 Conferir o client e criar o Secret
 
-No Keycloak, abra **observability > Clients > openshift**. Habilite **Client authentication** e **Standard Flow**; desabilite **Implicit Flow** e **Direct Access Grants**.
-
-**Antes de configurar o callback, identifique os nomes já utilizados no OAuth do cluster:**
-
-```bash
-oc get oauth cluster -o jsonpath='{range .spec.identityProviders[*]}{.name}{" => "}{.type}{"\n"}{end}'
-```
-
-O nome do novo provedor OpenID deve ser **único**. Se o HTPasswd existente já se chama `keycloak`, utilize `keycloak-oidc` no novo OpenID. Caso o HTPasswd se chame `developer`, pode utilizar `keycloak` no OpenID. **O sufixo do callback deve ser exatamente o nome escolhido.**
-
-Exemplo para CRC cujo HTPasswd já se chama `keycloak`:
+No Keycloak, abra **observability > Clients > openshift**. Habilite **Client authentication** e **Standard Flow**; desabilite **Implicit Flow** e **Direct Access Grants**. Configure o callback:
 
 ```text
-https://oauth-openshift.apps-crc.testing/oauth2callback/keycloak-oidc
+https://oauth-openshift.apps-crc.testing/oauth2callback/keycloak
 ```
 
-Em **Valid redirect URIs** do client `openshift`, autorize essa URL exata. Se o provedor OpenID for chamado `keycloak`, use `https://oauth-openshift.apps-crc.testing/oauth2callback/keycloak`. Ajuste o domínio se necessário e atualize também `keycloak-gitops/base/keycloak-config-realm.yaml` para preservar o callback nos próximos imports GitOps; caso contrário, pode ocorrer `Invalid parameter: redirect_uri`.
-
-Em **Credentials**, copie o client secret atual e confira o Secret consumidor:
+Ajuste o domínio se necessário. Em **Credentials**, copie o client secret atual e confira o Secret consumidor:
 
 ```bash
 oc -n openshift-config get secret keycloak-openshift-client-secret --ignore-not-found
@@ -803,10 +791,10 @@ oc get oauth cluster -o yaml
 oc edit oauth cluster
 ```
 
-Em `spec.identityProviders`, acrescente o item abaixo **no mesmo nível** do provedor HTPasswd existente. O exemplo usa `keycloak-oidc`, adequado quando o HTPasswd já se chama `keycloak`. Se o HTPasswd se chama `developer`, você pode trocar o nome do novo provedor para `keycloak`, desde que tenha configurado o callback correspondente na etapa 10.1. **Não renomeie nem remova o HTPasswd existente**; preserve também `tokenConfig` e `metadata`.
+Em `spec.identityProviders`, acrescente o item abaixo depois do provedor `developer`. Alinhe `- name: keycloak` com o `- htpasswd:` existente. Preserve os demais provedores, `tokenConfig` e `metadata`.
 
 ```yaml
-- name: keycloak-oidc
+- name: keycloak
   mappingMethod: claim
   type: OpenID
   openID:
@@ -838,45 +826,7 @@ oc -n openshift-authentication get pods
 oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
 ```
 
-Aguarde `authentication` ficar disponível e sem degradação. Confira que a lista apresenta o HTPasswd original **e** o OpenID com nome único. Teste o login pelo provedor OpenID em janela privada; mantenha a sessão de `kubeadmin` aberta.
-
-#### 10.2.1 Criar a regra de acesso administrativo global (RBAC)
-
-**Autenticação OIDC não concede `cluster-admin` automaticamente.** O acesso global de `openshift-admin` depende de duas condições: o Keycloak emitir o claim `groups` contendo `openshift-cluster-admins` e existir um **ClusterRoleBinding** ligando esse grupo ao ClusterRole `cluster-admin`.
-
-No Keycloak, confira que **somente a conta administrativa confiável** pertence a `openshift-cluster-admins`; no client `openshift`, confirme o mapper `groups` no ID token e no UserInfo, com `full.path=false`. Faça login como `openshift-admin` pelo OpenID, mantendo uma sessão `kubeadmin` separada.
-
-**Na sessão administrativa `kubeadmin`**, confira se o grupo foi sincronizado e se contém somente os membros esperados:
-
-```bash
-oc get user openshift-admin
-oc get group openshift-cluster-admins -o yaml
-oc get clusterrolebinding keycloak-openshift-cluster-admins --ignore-not-found
-```
-
-Se o grupo não existir ou `openshift-admin` não for membro, corrija o mapper OIDC e refaça o login antes de conceder acesso global. Se houver membros desconhecidos, **não aplique o vínculo**.
-
-Com a associação validada, visualize o recurso versionado e aplique-o **somente com `kubeadmin`**:
-
-```bash
-cd "$WORKDIR/argocd-gitops"
-oc kustomize bootstrap/openshift-access/cluster-admin
-oc apply -k bootstrap/openshift-access/cluster-admin
-oc get clusterrolebinding keycloak-openshift-cluster-admins -o yaml
-```
-
-Esse ClusterRoleBinding associa o grupo `openshift-cluster-admins` ao ClusterRole `cluster-admin`. Ele autoriza operações globais, inclusive leitura de Secrets e gerenciamento de RBAC. **Não é criado pelo App-of-Apps** e não deve ser confundido com os RoleBindings de projeto da etapa 10.3.
-
-Depois de renovar o login de `openshift-admin`, valide com a **sessão dele**, e não apenas por impersonação administrativa:
-
-```bash
-oc whoami
-oc whoami --show-groups
-oc auth can-i list routes.route.openshift.io --all-namespaces
-oc get routes -A
-```
-
-Espere `openshift-cluster-admins` nos grupos e `yes` em `can-i`. Se o binding existir mas o grupo não aparecer em `whoami --show-groups`, investigue o claim OIDC; não crie vínculos de usuário adicionais como atalho. Preserve `kubeadmin` até confirmar o novo acesso.
+Aguarde `authentication` ficar disponível e sem degradação. Confira `developer keycloak` na lista de provedores. Teste o login Keycloak em janela privada e confira as permissões do usuário; mantenha a sessão de `kubeadmin` aberta.
 
 ### 10.3 Aplicar as permissões dos grupos
 
@@ -901,7 +851,14 @@ oc apply -k bootstrap/openshift-access
 
 Resolva alterações locais antes do pull. Confira os doze RoleBindings antes de aplicar. O papel admin de projeto permite ler Secrets e gerenciar recursos desses namespaces; atribua o grupo somente a operadores autorizados.
 
-O acesso global de `openshift-admin` foi tratado separadamente na **etapa 10.2.1**. Esta etapa aplica apenas permissões por namespace; não substitui o ClusterRoleBinding administrativo.
+Aplique separadamente o acesso global da conta `openshift-admin`:
+
+```bash
+oc kustomize bootstrap/openshift-access/cluster-admin
+oc apply -k bootstrap/openshift-access/cluster-admin
+```
+
+Esse vínculo concede administração completa do cluster. Mantenha kubeadmin até testar o novo administrador.
 
 ### 10.4 Testar o acesso pelo Keycloak
 
@@ -932,7 +889,7 @@ oc get group openshift-cluster-admins -o yaml
 oc get clusterrolebinding keycloak-openshift-cluster-admins
 ```
 
-No Argo, sincronize **argocd-cluster**. Saia da interface e escolha **Log in via OpenShift**; na tela do OpenShift, selecione o provedor OpenID configurado na etapa 10.2 (**keycloak-oidc** ou **keycloak**) e entre como **openshift-admin**. Confira o usuário e o grupo em **User Info** e teste a sincronização de uma aplicação autorizada.
+No Argo, sincronize **argocd-cluster**. Saia da interface e escolha **Log in via OpenShift**; na tela do OpenShift, selecione **keycloak** e entre como **openshift-admin**. Confira o usuário e o grupo em **User Info** e teste a sincronização de uma aplicação autorizada.
 
 Mantenha o `admin` local do Argo como recuperação. As contas `observability-admin` e de leitura não recebem administração do Argo por esse mapeamento.
 
