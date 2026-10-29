@@ -378,7 +378,60 @@ oc kustomize overlays/applications/desenvolvimento
 
 Confira `repoURL`, `targetRevision`, `path` e `destination` nas duas saídas.
 
-### 6.2 Aplicar e acompanhar
+### 6.2 Preparar Keycloak e o Secret do Grafana antes da stack completa
+
+**Pré-requisito obrigatório:** a instância Grafana consome o Secret `grafana/grafana-oauth` durante a inicialização. Como a etapa 6.3 habilita o App-of-Apps com sincronização automática, **crie esse Secret antes**; não espere até a etapa 8.
+
+Primeiro, publique apenas a Application do Keycloak. Ela instalará o Operator, o banco, a instância e o Job de importação do realm `observability`:
+
+```bash
+cd "$WORKDIR/argocd-gitops"
+oc -n openshift-gitops apply -f base/apps/app-keycloak-dev.yaml
+oc -n openshift-gitops get application keycloak-dev
+oc -n keycloak-dev get keycloak,pods,jobs,route
+```
+
+Aguarde o recurso Keycloak e o Job aparecerem. Depois confira a prontidão e a importação:
+
+```bash
+oc -n keycloak-dev wait --for=condition=Ready keycloak/keycloak-dev --timeout=10m
+oc -n keycloak-dev wait --for=condition=Complete job/keycloak-config-cli-observability --timeout=10m
+```
+
+Se a Application falhar, investigue o motivo no Argo antes de continuar. **Não inicie o App-of-Apps enquanto o realm ou o client `grafana` não existirem.**
+
+Acesse `https://keycloak-dev.apps-crc.testing/admin/` com o administrador inicial do Keycloak. Para consultar as credenciais, use os comandos privados da etapa [7.2](#72-consultar-o-administrador-inicial-do-keycloak) (não envie a senha para logs ou chats). Selecione **observability > Clients > grafana**, habilite **Client authentication** e **Standard Flow** e copie o **Client secret** da aba **Credentials**.
+
+Confira se o Secret consumidor já existe:
+
+```bash
+oc -n grafana get secret grafana-oauth --ignore-not-found
+```
+
+**Somente se estiver ausente**, capture o valor no terminal privado:
+
+```bash
+printf '%s' 'Client secret do client grafana: '
+IFS= read -r -s GRAFANA_CLIENT_SECRET
+printf '\n'
+test -n "$GRAFANA_CLIENT_SECRET"
+```
+
+Se o teste passou, crie o Secret com as chaves exigidas pelo Grafana:
+
+```bash
+oc -n grafana create secret generic grafana-oauth \
+  --from-literal=client-id=grafana \
+  --from-file=client-secret=<(printf '%s' "$GRAFANA_CLIENT_SECRET")
+unset GRAFANA_CLIENT_SECRET
+oc -n grafana describe secret grafana-oauth
+```
+
+O `describe` mostra os **nomes das chaves**, não a senha. Se o Secret já existia, **confira sua correspondência com o client** antes de prosseguir; não o sobrescreva automaticamente. Não versione credenciais no Git.
+
+O login OIDC do Grafana só estará completo após configurar a **Valid redirect URI** na etapa 8.1. Aqui antecipamos a credencial necessária para o **pod iniciar**.
+
+### 6.3 Aplicar e acompanhar
 
 ```bash
 oc apply -k overlays/desenvolvimento
@@ -387,9 +440,9 @@ oc -n openshift-gitops get applications.argoproj.io
 
 Confira o diff antes de aplicar. Autosync, prune e selfHeal podem criar, alterar e remover recursos conforme o Git.
 
-Acompanhe as Applications. O Grafana pode aguardar o Secret `grafana-oauth`, criado na etapa 8.
+Acompanhe as Applications. O Secret `grafana-oauth` já deve existir desde a etapa 6.2. Se houver falha do Grafana por Secret ausente, revise as chaves `client-id` e `client-secret` e execute um **Sync completo** de `grafana` após corrigir a causa.
 
-### 6.3 Consultar falhas de sincronização
+### 6.4 Consultar falhas de sincronização
 
 Para a aplicação Grafana:
 
@@ -408,7 +461,7 @@ oc -n grafana-operator get subscription,installplan,csv,pods
 
 Aguarde as CRDs ficarem `Established`. Depois de corrigir a causa, use **Refresh → Sync completo** no Argo para repetir uma operação que falhou.
 
-### 6.4 Acompanhar as imagens automáticas do MinIO e do cliente mc
+### 6.5 Acompanhar as imagens automáticas do MinIO e do cliente mc
 
 Execute **Sync completo** de `loki` no Argo. Aguarde o hook `crc-minio-images` concluir.
 
@@ -526,40 +579,21 @@ Confira a resposta OIDC sem erro TLS e `issuer` igual a `$KEYCLOAK_URL/realms/ob
 
 ## 8. Configurar Grafana OIDC manualmente
 
-### 8.1 Conferir o client e transferir sua credencial
+### 8.1 Validar o client, o Secret já criado e a redirect URI
 
-No Keycloak, abra **observability > Clients > grafana**. Habilite **Client authentication** e **Standard Flow**. Consulte o host do Grafana:
+O Secret `grafana/grafana-oauth` **já foi criado na etapa 6.2, antes do App-of-Apps**. Não recrie a credencial sem necessidade.
+
+No Keycloak, abra **observability > Clients > grafana** e confirme **Client authentication** e **Standard Flow**. Consulte o host real da Route do Grafana:
 
 ```bash
 oc -n grafana get route grafana-route
-```
-
-Use `https://<host-da-route>/login/generic_oauth` em **Valid redirect URIs**. Em **Credentials**, copie o client secret atual. Confira o Secret consumidor:
-
-```bash
-oc -n grafana get secret grafana-oauth --ignore-not-found
-```
-
-Se ainda não existe:
-
-```bash
-printf '%s' 'Client secret do client grafana: '
-IFS= read -r -s GRAFANA_CLIENT_SECRET
-printf '\n'
-test -n "$GRAFANA_CLIENT_SECRET"
-```
-
-Se o test passou:
-
-```bash
-oc -n grafana create secret generic grafana-oauth \
-  --from-literal=client-id=grafana \
-  --from-file=client-secret=<(printf '%s' "$GRAFANA_CLIENT_SECRET")
-unset GRAFANA_CLIENT_SECRET
+oc -n grafana get secret grafana-oauth
 oc -n grafana describe secret grafana-oauth
 ```
 
-Se o Secret já existir, confira sua correspondência com o client antes de atualizar.
+Em **Valid redirect URIs**, configure `https://<host-da-route>/login/generic_oauth` (com o host efetivo retornado pela Route). Verifique se o client secret salvo no Secret do OpenShift corresponde ao client `grafana` no Keycloak, sem imprimir seu valor.
+
+Se `grafana-oauth` estiver ausente, volte à **etapa 6.2** e crie-o antes de repetir o Sync de `grafana`. Se já existir, não o sobrescreva automaticamente.
 
 ### 8.2 Sincronizar e testar
 
@@ -717,13 +751,25 @@ Execute após o Keycloak estar estável. Preserve os provedores existentes e a s
 
 ### 10.1 Conferir o client e criar o Secret
 
-No Keycloak, abra **observability > Clients > openshift**. Habilite **Client authentication** e **Standard Flow**; desabilite **Implicit Flow** e **Direct Access Grants**. Configure o callback:
+No Keycloak, abra **observability > Clients > openshift**. Habilite **Client authentication** e **Standard Flow**; desabilite **Implicit Flow** e **Direct Access Grants**.
 
-```text
-https://oauth-openshift.apps-crc.testing/oauth2callback/keycloak
+**Antes de configurar o callback, identifique os nomes já utilizados no OAuth do cluster:**
+
+```bash
+oc get oauth cluster -o jsonpath='{range .spec.identityProviders[*]}{.name}{" => "}{.type}{"\n"}{end}'
 ```
 
-Ajuste o domínio se necessário. Em **Credentials**, copie o client secret atual e confira o Secret consumidor:
+O nome do novo provedor OpenID deve ser **único**. Se o HTPasswd existente já se chama `keycloak`, utilize `keycloak-oidc` no novo OpenID. Caso o HTPasswd se chame `developer`, pode utilizar `keycloak` no OpenID. **O sufixo do callback deve ser exatamente o nome escolhido.**
+
+Exemplo para CRC cujo HTPasswd já se chama `keycloak`:
+
+```text
+https://oauth-openshift.apps-crc.testing/oauth2callback/keycloak-oidc
+```
+
+Em **Valid redirect URIs** do client `openshift`, autorize essa URL exata. Se o provedor OpenID for chamado `keycloak`, use `https://oauth-openshift.apps-crc.testing/oauth2callback/keycloak`. Ajuste o domínio se necessário e atualize também `keycloak-gitops/base/keycloak-config-realm.yaml` para preservar o callback nos próximos imports GitOps; caso contrário, pode ocorrer `Invalid parameter: redirect_uri`.
+
+Em **Credentials**, copie o client secret atual e confira o Secret consumidor:
 
 ```bash
 oc -n openshift-config get secret keycloak-openshift-client-secret --ignore-not-found
@@ -757,10 +803,10 @@ oc get oauth cluster -o yaml
 oc edit oauth cluster
 ```
 
-Em `spec.identityProviders`, acrescente o item abaixo depois do provedor `developer`. Alinhe `- name: keycloak` com o `- htpasswd:` existente. Preserve os demais provedores, `tokenConfig` e `metadata`.
+Em `spec.identityProviders`, acrescente o item abaixo **no mesmo nível** do provedor HTPasswd existente. O exemplo usa `keycloak-oidc`, adequado quando o HTPasswd já se chama `keycloak`. Se o HTPasswd se chama `developer`, você pode trocar o nome do novo provedor para `keycloak`, desde que tenha configurado o callback correspondente na etapa 10.1. **Não renomeie nem remova o HTPasswd existente**; preserve também `tokenConfig` e `metadata`.
 
 ```yaml
-- name: keycloak
+- name: keycloak-oidc
   mappingMethod: claim
   type: OpenID
   openID:
@@ -792,7 +838,45 @@ oc -n openshift-authentication get pods
 oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
 ```
 
-Aguarde `authentication` ficar disponível e sem degradação. Confira `developer keycloak` na lista de provedores. Teste o login Keycloak em janela privada e confira as permissões do usuário; mantenha a sessão de `kubeadmin` aberta.
+Aguarde `authentication` ficar disponível e sem degradação. Confira que a lista apresenta o HTPasswd original **e** o OpenID com nome único. Teste o login pelo provedor OpenID em janela privada; mantenha a sessão de `kubeadmin` aberta.
+
+#### 10.2.1 Criar a regra de acesso administrativo global (RBAC)
+
+**Autenticação OIDC não concede `cluster-admin` automaticamente.** O acesso global de `openshift-admin` depende de duas condições: o Keycloak emitir o claim `groups` contendo `openshift-cluster-admins` e existir um **ClusterRoleBinding** ligando esse grupo ao ClusterRole `cluster-admin`.
+
+No Keycloak, confira que **somente a conta administrativa confiável** pertence a `openshift-cluster-admins`; no client `openshift`, confirme o mapper `groups` no ID token e no UserInfo, com `full.path=false`. Faça login como `openshift-admin` pelo OpenID, mantendo uma sessão `kubeadmin` separada.
+
+**Na sessão administrativa `kubeadmin`**, confira se o grupo foi sincronizado e se contém somente os membros esperados:
+
+```bash
+oc get user openshift-admin
+oc get group openshift-cluster-admins -o yaml
+oc get clusterrolebinding keycloak-openshift-cluster-admins --ignore-not-found
+```
+
+Se o grupo não existir ou `openshift-admin` não for membro, corrija o mapper OIDC e refaça o login antes de conceder acesso global. Se houver membros desconhecidos, **não aplique o vínculo**.
+
+Com a associação validada, visualize o recurso versionado e aplique-o **somente com `kubeadmin`**:
+
+```bash
+cd "$WORKDIR/argocd-gitops"
+oc kustomize bootstrap/openshift-access/cluster-admin
+oc apply -k bootstrap/openshift-access/cluster-admin
+oc get clusterrolebinding keycloak-openshift-cluster-admins -o yaml
+```
+
+Esse ClusterRoleBinding associa o grupo `openshift-cluster-admins` ao ClusterRole `cluster-admin`. Ele autoriza operações globais, inclusive leitura de Secrets e gerenciamento de RBAC. **Não é criado pelo App-of-Apps** e não deve ser confundido com os RoleBindings de projeto da etapa 10.3.
+
+Depois de renovar o login de `openshift-admin`, valide com a **sessão dele**, e não apenas por impersonação administrativa:
+
+```bash
+oc whoami
+oc whoami --show-groups
+oc auth can-i list routes.route.openshift.io --all-namespaces
+oc get routes -A
+```
+
+Espere `openshift-cluster-admins` nos grupos e `yes` em `can-i`. Se o binding existir mas o grupo não aparecer em `whoami --show-groups`, investigue o claim OIDC; não crie vínculos de usuário adicionais como atalho. Preserve `kubeadmin` até confirmar o novo acesso.
 
 ### 10.3 Aplicar as permissões dos grupos
 
@@ -817,14 +901,7 @@ oc apply -k bootstrap/openshift-access
 
 Resolva alterações locais antes do pull. Confira os doze RoleBindings antes de aplicar. O papel admin de projeto permite ler Secrets e gerenciar recursos desses namespaces; atribua o grupo somente a operadores autorizados.
 
-Aplique separadamente o acesso global da conta `openshift-admin`:
-
-```bash
-oc kustomize bootstrap/openshift-access/cluster-admin
-oc apply -k bootstrap/openshift-access/cluster-admin
-```
-
-Esse vínculo concede administração completa do cluster. Mantenha kubeadmin até testar o novo administrador.
+O acesso global de `openshift-admin` foi tratado separadamente na **etapa 10.2.1**. Esta etapa aplica apenas permissões por namespace; não substitui o ClusterRoleBinding administrativo.
 
 ### 10.4 Testar o acesso pelo Keycloak
 
@@ -855,7 +932,7 @@ oc get group openshift-cluster-admins -o yaml
 oc get clusterrolebinding keycloak-openshift-cluster-admins
 ```
 
-No Argo, sincronize **argocd-cluster**. Saia da interface e escolha **Log in via OpenShift**; na tela do OpenShift, selecione **keycloak** e entre como **openshift-admin**. Confira o usuário e o grupo em **User Info** e teste a sincronização de uma aplicação autorizada.
+No Argo, sincronize **argocd-cluster**. Saia da interface e escolha **Log in via OpenShift**; na tela do OpenShift, selecione o provedor OpenID configurado na etapa 10.2 (**keycloak-oidc** ou **keycloak**) e entre como **openshift-admin**. Confira o usuário e o grupo em **User Info** e teste a sincronização de uma aplicação autorizada.
 
 Mantenha o `admin` local do Argo como recuperação. As contas `observability-admin` e de leitura não recebem administração do Argo por esse mapeamento.
 
