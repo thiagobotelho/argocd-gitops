@@ -18,3 +18,7 @@ oc -n openshift-gitops get applications
 A sequência completa e a arquitetura pertencem ao [cert-manager-gitops](https://github.com/thiagobotelho/cert-manager-gitops/blob/main/docs/INTEGRACAO-MESH.md). A PKI e a recuperação pertencem ao [vault-gitops](https://github.com/thiagobotelho/vault-gitops). Este repositório mantém somente Applications, AppProjects e seleção dos perfis.
 
 Prune desabilitado evita apagar automaticamente recursos que deixam a fonte; não é backup. Argo CD não inicializa/deslacra o Vault nem armazena shares. Waves não substituem verificação de prontidão entre Applications.
+
+## Capacidade do controller
+
+O perfil base permite até 4 GiB ao application controller. Dimensione esse limite conforme Applications, CRDs e memória disponível no nó. Se a sincronização parar, verifique reinícios e `lastState.terminated.reason` do pod: `OOMKilled` indica que o limite foi atingido. Ajuste a instância ArgoCD versionada e acompanhe a reconciliação; aumentar o limite não substitui capacidade disponível no cluster.
