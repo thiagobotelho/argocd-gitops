@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: vault
+  namespace: openshift-gitops
+spec:
+  description: "Instala\xE7\xE3o opcional vault"
+  sourceRepos:
+  - https://github.com/thiagobotelho/vault-gitops.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: vault
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: ServiceAccount
+  - group: ''
+    kind: ConfigMap
+  - group: ''
+    kind: Service
+  - group: apps
+    kind: StatefulSet
+  - group: route.openshift.io
+    kind: Route
+  - group: networking.k8s.io
+    kind: NetworkPolicy
+  - group: rbac.authorization.k8s.io
+    kind: Role
+  - group: rbac.authorization.k8s.io
+    kind: RoleBinding
+  - group: monitoring.rhobs
+    kind: ServiceMonitor

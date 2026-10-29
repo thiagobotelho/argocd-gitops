@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: service-mesh-vault
+  namespace: openshift-gitops
+spec:
+  description: "Instala\xE7\xE3o opcional service-mesh-vault"
+  sourceRepos:
+  - https://github.com/thiagobotelho/service-mesh-gitops.git
+  destinations:
+  - server: https://kubernetes.default.svc
+    namespace: istio-vault-system
+  clusterResourceWhitelist:
+  - group: sailoperator.io
+    kind: Istio
+  - group: sailoperator.io
+    kind: IstioRevisionTag
+  namespaceResourceWhitelist:
+  - group: monitoring.rhobs
+    kind: PodMonitor

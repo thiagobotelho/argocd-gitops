@@ -168,3 +168,7 @@ Consulte [docs/OPERACAO.md](docs/OPERACAO.md) para os procedimentos de configura
 ## Responsabilidades e integrações
 
 Consulte [arquitetura e integrações](docs/ARQUITETURA-E-INTEGRACOES.md) para a propriedade dos recursos, dependências e seleção do perfil opcional do mesh.
+
+## PKI e certificados opcionais
+
+Veja [optional/pki](optional/pki/README.md) para Vault, cert-manager, Issuer/istio-csr e mesh isolado. O bootstrap de PKI e o deslacramento permanecem operações explícitas fora do Argo CD.

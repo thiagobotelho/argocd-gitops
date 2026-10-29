@@ -74,3 +74,7 @@ Ajuste domínio, armazenamento, capacidade, imagem, tenant e Secrets no componen
 Renderize antes de aplicar; valide admissão, reconciliação e comportamento separadamente. Synced/Healthy não comprova ingestão nem consulta. Registre SHA e evidências em local privado; os guias mantêm comandos e critérios esperados, sem resultados pessoais.
 
 Os perfis CRC usam réplicas e recursos de laboratório. Nomes de overlays aceite/producao não representam homologação de HA, retenção, backup ou capacidade. Planeje esses requisitos antes da promoção.
+
+## PKI opcional
+
+[vault-gitops](https://github.com/thiagobotelho/vault-gitops) mantém servidor e PKI. [cert-manager-gitops](https://github.com/thiagobotelho/cert-manager-gitops) mantém Operator, Issuer e istio-csr. O mesh separado e seus monitores pertencem a service-mesh-gitops; os exercícios a mesh-apps-lab. A sequência das Applications está em [optional/pki](../optional/pki/README.md).
