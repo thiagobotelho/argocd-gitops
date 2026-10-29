@@ -244,12 +244,12 @@ spec:
         cpu: 250m
         memory: 256Mi
   controller:
-    # A ordem de processamento influencia memória, descarte e agrupamento de dados.
+    # Ajuste conforme número de Applications, CRDs e uso do cache do controller.
     processors: {}
     resources:
       limits:
         cpu: '2'
-        memory: 2Gi
+        memory: 4Gi
       requests:
         cpu: 250m
         memory: 1Gi
